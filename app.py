@@ -61,14 +61,15 @@ def load_csv_data(filepath: str) -> pd.DataFrame:
             if old_name in df.columns:
                 df = df.rename(columns={old_name: new_name})
         
-        # Ensure required columns exist
-        required_cols = ['Open', 'High', 'Low', 'Close']
-        missing_cols = [col for col in required_cols if col not in df.columns]
-        
-        if missing_cols:
-            logger.warning(f"Missing columns in {filepath}: {missing_cols}")
-            for col in missing_cols:
-                df[col] = 0.0
+        # Only check for OHLC columns if we don't have trade data
+        if not any(col in df.columns for col in ['pnl', 'EntryPrice', 'ExitPrice']):
+            required_cols = ['Open', 'High', 'Low', 'Close']
+            missing_cols = [col for col in required_cols if col not in df.columns]
+            
+            if missing_cols:
+                logger.warning(f"Missing OHLC columns in {filepath}: {missing_cols}")
+                for col in missing_cols:
+                    df[col] = 0.0
         
         return df
     except Exception as e:
@@ -81,18 +82,34 @@ def calculate_metrics(df: pd.DataFrame) -> dict:
         return {"net_profit": 0, "total_trades": 0, "wins": 0, "losses": 0, "max_drawdown": 0}
     
     try:
-        if 'EntryPrice' in df.columns and 'ExitPrice' in df.columns:
-            df['pnl'] = df['ExitPrice'] - df['EntryPrice']
+        # Handle different CSV formats
+        if 'pnl' in df.columns:
+            # Direct PnL data (like your trades.csv)
+            df['pnl'] = pd.to_numeric(df['pnl'], errors='coerce').fillna(0)
+        elif 'EntryPrice' in df.columns and 'ExitPrice' in df.columns:
+            # Entry/Exit price data
+            df['pnl'] = pd.to_numeric(df['ExitPrice'], errors='coerce') - pd.to_numeric(df['EntryPrice'], errors='coerce')
+        elif 'Open' in df.columns and 'Close' in df.columns:
+            # OHLC candlestick data
+            df['pnl'] = pd.to_numeric(df['Close'], errors='coerce') - pd.to_numeric(df['Open'], errors='coerce')
         else:
-            df['pnl'] = df['Close'] - df['Open']
+            logger.warning("No suitable price columns found for PnL calculation")
+            return {"net_profit": 0, "total_trades": 0, "wins": 0, "losses": 0, "max_drawdown": 0}
         
         df['pnl'] = df['pnl'].fillna(0)
         
         net_profit = float(df['pnl'].sum())
         total_trades = len(df)
-        wins = int((df['pnl'] > 0).sum())
-        losses = int((df['pnl'] <= 0).sum())
         
+        # Handle wins/losses - check if we have a win column or calculate from PnL
+        if 'win' in df.columns:
+            wins = int(df['win'].sum())
+            losses = int((~df['win']).sum())
+        else:
+            wins = int((df['pnl'] > 0).sum())
+            losses = int((df['pnl'] <= 0).sum())
+        
+        # Calculate max drawdown
         cumulative_pnl = df['pnl'].cumsum()
         peak = cumulative_pnl.expanding().max()
         drawdown = peak - cumulative_pnl

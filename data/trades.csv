@@ -1,0 +1,4 @@
+symbol,entry,exit,pnl,win
+EURUSD,2025-05-20,2025-05-20,50,True
+USDJPY,2025-05-21,2025-05-21,-20,False
+GBPUSD,2025-05-22,2025-05-22,40,True
