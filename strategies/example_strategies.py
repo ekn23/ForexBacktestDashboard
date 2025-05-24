@@ -72,8 +72,8 @@ class RSIStrategy(BaseStrategy):
     RSI Overbought/Oversold Strategy
     """
     
-    def __init__(self, symbol: str, timeframe: str, rsi_period: int = 14, oversold: int = 30, overbought: int = 70, initial_balance: float = 10000):
-        super().__init__(symbol, timeframe, initial_balance)
+    def __init__(self, symbol: str, timeframe: str, rsi_period: int = 14, oversold: int = 30, overbought: int = 70, trading_config=None):
+        super().__init__(symbol, timeframe, trading_config)
         self.rsi_period = rsi_period
         self.oversold = oversold
         self.overbought = overbought
