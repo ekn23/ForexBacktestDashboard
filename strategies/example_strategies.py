@@ -85,12 +85,19 @@ class RSIStrategy(BaseStrategy):
     
     def calculate_rsi(self, prices: pd.Series) -> float:
         """Calculate RSI indicator"""
+        if len(prices) < self.rsi_period + 1:
+            return 50.0  # Neutral RSI when not enough data
+        
         delta = prices.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=self.rsi_period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=self.rsi_period).mean()
+        
+        # Avoid division by zero
+        loss = loss.replace(0, 0.0001)
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
-        return rsi.iloc[-1]
+        
+        return rsi.iloc[-1] if not pd.isna(rsi.iloc[-1]) else 50.0
     
     def on_tick(self, data: pd.Series) -> Optional[Dict]:
         """
