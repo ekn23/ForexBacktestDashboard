@@ -273,8 +273,11 @@ def detailed_trades():
 
 @app.route('/api/csv_data/<symbol>/<timeframe>')
 def get_csv_data(symbol, timeframe):
-    """Get raw CSV data for a specific symbol and timeframe."""
+    """Get raw CSV data for a specific symbol and timeframe with optional date filtering."""
     try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
         csv_files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith('.csv')]
         
         for filename in csv_files:
@@ -286,10 +289,20 @@ def get_csv_data(symbol, timeframe):
                 if df.empty:
                     continue
                 
+                # Apply date filtering if provided
+                if start_date or end_date:
+                    if 'Local time' in df.columns:
+                        df['datetime'] = pd.to_datetime(df['Local time'])
+                        if start_date:
+                            df = df[df['datetime'] >= start_date]
+                        if end_date:
+                            df = df[df['datetime'] <= end_date]
+                
                 data = []
                 for idx, row in df.iterrows():
+                    timestamp = row.get('Local time', str(idx))
                     data.append({
-                        "timestamp": str(row.get('Timestamp', idx)),
+                        "timestamp": str(timestamp),
                         "open": float(row['Open']),
                         "high": float(row['High']),
                         "low": float(row['Low']),
@@ -303,6 +316,59 @@ def get_csv_data(symbol, timeframe):
     except Exception as e:
         logger.error(f"Error in get_csv_data endpoint: {e}")
         return jsonify({"error": f"Error loading CSV data: {str(e)}"}), 500
+
+@app.route('/api/backtest/<symbol>/<timeframe>')
+def run_backtest(symbol, timeframe):
+    """Run backtest analysis for specific symbol, timeframe and date range."""
+    try:
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        
+        csv_files = [f for f in os.listdir(DATA_DIR) if f.lower().endswith('.csv')]
+        
+        for filename in csv_files:
+            file_info = parse_filename(filename)
+            if file_info["symbol"] == symbol and file_info["timeframe"] == timeframe:
+                filepath = os.path.join(DATA_DIR, filename)
+                df = load_csv_data(filepath)
+                
+                if df.empty:
+                    continue
+                
+                # Apply date filtering if provided
+                if start_date or end_date:
+                    if 'Local time' in df.columns:
+                        df['datetime'] = pd.to_datetime(df['Local time'])
+                        if start_date:
+                            df = df[df['datetime'] >= start_date]
+                        if end_date:
+                            df = df[df['datetime'] <= end_date]
+                
+                # Calculate backtest metrics for the filtered data
+                metrics = calculate_metrics(df)
+                
+                # Add additional backtest information
+                result = {
+                    "symbol": symbol,
+                    "timeframe": timeframe,
+                    "start_date": start_date,
+                    "end_date": end_date,
+                    "total_candles": len(df),
+                    "net_profit": metrics["net_profit"],
+                    "total_trades": metrics["total_trades"],
+                    "wins": metrics["wins"],
+                    "losses": metrics["losses"],
+                    "win_rate": (metrics["wins"] / max(metrics["total_trades"], 1)) * 100,
+                    "max_drawdown": metrics["max_drawdown"],
+                    "avg_trade": metrics["net_profit"] / max(metrics["total_trades"], 1)
+                }
+                
+                return jsonify(result)
+        
+        return jsonify({"error": f"No data found for {symbol} {timeframe}"}), 404
+    except Exception as e:
+        logger.error(f"Error in run_backtest endpoint: {e}")
+        return jsonify({"error": f"Error running backtest: {str(e)}"}), 500
 
 @app.route('/api/upload', methods=['POST'])
 def upload_files():

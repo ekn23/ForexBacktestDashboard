@@ -110,8 +110,57 @@
             </div>
         </div>
 
-        <!-- File Upload Section -->
+        <!-- Backtest Controls Section -->
         <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-play-circle"></i>
+                            Backtest Configuration
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">Currency Pair</label>
+                                <select id="backtest-symbol" class="form-select">
+                                    <option value="AUDUSD">AUD/USD</option>
+                                    <option value="EURUSD">EUR/USD</option>
+                                    <option value="GBPUSD">GBP/USD</option>
+                                    <option value="NZDUSD">NZD/USD</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Timeframe</label>
+                                <select id="backtest-timeframe" class="form-select">
+                                    <option value="5_M">5 Minutes</option>
+                                    <option value="30_M">30 Minutes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" id="start-date" class="form-control" value="2023-04-26">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">End Date</label>
+                                <input type="date" id="end-date" class="form-control" value="2025-04-26">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <button id="run-backtest-btn" class="btn btn-primary w-100">
+                                    <i class="bi bi-play"></i> Run Backtest
+                                </button>
+                            </div>
+                        </div>
+                        <div id="backtest-status" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="row mb-4" style="display: none;">
             <div class="col-12">
                 <div class="card">
                     <div class="card-header">
@@ -273,6 +322,12 @@
         uploadArea.addEventListener('drop', handleDrop);
         fileInput.addEventListener('change', handleFileSelect);
 
+        // Backtest functionality
+        const runBacktestBtn = document.getElementById('run-backtest-btn');
+        const backtestStatus = document.getElementById('backtest-status');
+        
+        runBacktestBtn.addEventListener('click', runBacktest);
+
         function handleDragOver(e) {
             e.preventDefault();
             uploadArea.classList.add('dragover');
@@ -358,6 +413,57 @@
             const variance = profits.reduce((sum, profit) => sum + Math.pow(profit - mean, 2), 0) / profits.length;
             const stdDev = Math.sqrt(variance);
             return stdDev === 0 ? 0 : (mean / stdDev);
+        }
+
+        async function runBacktest() {
+            try {
+                showLoading(true);
+                
+                const symbol = document.getElementById('backtest-symbol').value;
+                const timeframe = document.getElementById('backtest-timeframe').value;
+                const startDate = document.getElementById('start-date').value;
+                const endDate = document.getElementById('end-date').value;
+                
+                backtestStatus.innerHTML = `<div class="alert alert-info">Running backtest for ${symbol} ${timeframe} from ${startDate} to ${endDate}...</div>`;
+                
+                const params = new URLSearchParams();
+                if (startDate) params.append('start_date', startDate);
+                if (endDate) params.append('end_date', endDate);
+                
+                const response = await fetch(`/api/backtest/${symbol}/${timeframe}?${params}`);
+                const result = await response.json();
+                
+                if (response.ok) {
+                    // Show sections
+                    document.getElementById('metrics-section').style.display = 'block';
+                    document.getElementById('charts-section').style.display = 'block';
+                    document.getElementById('trades-section').style.display = 'block';
+                    
+                    // Update metrics with backtest results
+                    updateBacktestMetrics(result);
+                    
+                    backtestStatus.innerHTML = `<div class="alert alert-success">
+                        Backtest completed! Analyzed ${result.total_candles} candles from ${result.start_date} to ${result.end_date}
+                    </div>`;
+                } else {
+                    backtestStatus.innerHTML = `<div class="alert alert-danger">Error: ${result.error}</div>`;
+                }
+                
+            } catch (error) {
+                console.error('Error running backtest:', error);
+                backtestStatus.innerHTML = `<div class="alert alert-danger">Backtest failed: ${error.message}</div>`;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function updateBacktestMetrics(result) {
+            document.getElementById('net-profit').textContent = `$${result.net_profit.toFixed(4)}`;
+            document.getElementById('total-trades').textContent = result.total_candles;
+            document.getElementById('win-rate').textContent = `${result.win_rate.toFixed(1)}%`;
+            document.getElementById('max-drawdown').textContent = `$${result.max_drawdown.toFixed(4)}`;
+            document.getElementById('avg-duration').textContent = `${result.avg_trade.toFixed(4)}`;
+            document.getElementById('sharpe-ratio').textContent = '0.00'; // Will calculate later
         }
 
         async function loadDashboardData() {
