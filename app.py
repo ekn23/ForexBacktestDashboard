@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import json
 import logging
-from flask import Flask, request, jsonify, render_template_string, send_from_directory
+from flask import Flask, request, jsonify, render_template_string, send_from_directory, render_template
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 from strategy_tester import StrategyTester, test_moving_average_strategy, test_rsi_strategy, optimize_ma_strategy
@@ -400,6 +400,155 @@ def upload_files():
     except Exception as e:
         logger.error(f"Error uploading files: {e}")
         return jsonify({"error": f"Error uploading files: {str(e)}"}), 500
+
+@app.route('/strategy-chart')
+def strategy_chart_page():
+    """Strategy chart page with interactive trading signals."""
+    return render_template('strategy_chart.html')
+
+@app.route('/api/strategy-chart/<symbol>/<timeframe>')
+def strategy_chart_api(symbol, timeframe):
+    """Generate interactive chart with trade signals overlaid on price data."""
+    try:
+        from trading_config import TradingConfig
+        from strategies.example_strategies import RSIStrategy, MovingAverageCrossover
+        from strategy_tester import StrategyTester
+        import plotly.graph_objects as go
+        import plotly.utils
+        
+        strategy_type = request.args.get('strategy', 'RSI')
+        start_date = request.args.get('start_date')
+        
+        # Create professional trading config
+        config = TradingConfig(
+            starting_capital=10000,
+            leverage=50,
+            max_risk_per_trade=2.0,
+            slippage_pips=2.0
+        )
+        
+        # Create strategy
+        if strategy_type == 'RSI':
+            strategy = RSIStrategy(symbol, timeframe, trading_config=config)
+        else:
+            strategy = MovingAverageCrossover(symbol, timeframe, trading_config=config)
+        
+        # Run backtest to get trades
+        tester = StrategyTester("data")
+        result = tester.run_backtest(strategy, symbol, timeframe, start_date, None)
+        
+        # Load price data
+        filename = f"{symbol}_Candlestick_{timeframe}_BID_26.04.2023-26.04.2025.csv"
+        filepath = os.path.join('data', filename)
+        
+        if not os.path.exists(filepath):
+            return jsonify({'success': False, 'error': f'Data file not found: {filename}'})
+        
+        df = load_csv_data(filepath)
+        
+        # Apply date filtering if provided
+        if start_date:
+            df = df[df['Timestamp'] >= start_date]
+        
+        # Sample data for performance (every 10th point for smooth chart)
+        df_chart = df.iloc[::10].copy()
+        
+        # Create candlestick chart
+        fig = go.Figure()
+        
+        # Add candlestick chart
+        fig.add_trace(go.Candlestick(
+            x=df_chart['Timestamp'],
+            open=df_chart['Open'],
+            high=df_chart['High'],
+            low=df_chart['Low'],
+            close=df_chart['Close'],
+            name=f'{symbol}',
+            increasing_line_color='#00d4aa',
+            decreasing_line_color='#ff6b6b'
+        ))
+        
+        # Add trade signals if backtest was successful
+        if result and 'trades' in result and result['trades']:
+            trades = result['trades']
+            
+            buy_signals = []
+            sell_signals = []
+            
+            for trade in trades:
+                if trade.get('action') == 'BUY':
+                    buy_signals.append((trade['timestamp'], trade['price']))
+                elif trade.get('action') == 'SELL':
+                    sell_signals.append((trade['timestamp'], trade['price']))
+            
+            # Add buy signals (green triangles up)
+            if buy_signals:
+                buy_times, buy_prices = zip(*buy_signals)
+                fig.add_trace(go.Scatter(
+                    x=buy_times,
+                    y=buy_prices,
+                    mode='markers',
+                    name='🟢 Buy Orders',
+                    marker=dict(
+                        symbol='triangle-up',
+                        size=15,
+                        color='#00ff88',
+                        line=dict(width=2, color='#00cc66')
+                    ),
+                    hovertemplate='<b>BUY</b><br>Price: %{y}<br>Time: %{x}<extra></extra>'
+                ))
+            
+            # Add sell signals (red triangles down)
+            if sell_signals:
+                sell_times, sell_prices = zip(*sell_signals)
+                fig.add_trace(go.Scatter(
+                    x=sell_times,
+                    y=sell_prices,
+                    mode='markers',
+                    name='🔴 Sell Orders',
+                    marker=dict(
+                        symbol='triangle-down',
+                        size=15,
+                        color='#ff4444',
+                        line=dict(width=2, color='#cc0000')
+                    ),
+                    hovertemplate='<b>SELL</b><br>Price: %{y}<br>Time: %{x}<extra></extra>'
+                ))
+        
+        # Customize chart appearance
+        fig.update_layout(
+            title=f'{symbol} {timeframe} - {strategy_type} Strategy Trading Signals',
+            xaxis_title='Time',
+            yaxis_title='Price',
+            xaxis_rangeslider_visible=False,
+            height=650,
+            template='plotly_dark',
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01
+            ),
+            margin=dict(l=50, r=50, t=80, b=50)
+        )
+        
+        # Convert to JSON
+        chart_json = plotly.utils.PlotlyJSONEncoder().encode(fig)
+        
+        performance = result.get('performance', {}) if result else {}
+        
+        return jsonify({
+            'success': True,
+            'chart': chart_json,
+            'symbol': symbol,
+            'timeframe': timeframe,
+            'strategy': strategy_type,
+            'total_trades': len(result.get('trades', [])) if result else 0,
+            'performance': performance
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Chart generation failed: {str(e)}'})
 
 @app.route('/health')
 def health_check():

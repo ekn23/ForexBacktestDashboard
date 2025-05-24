@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strategy Chart - Trading Signals</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="mb-0">📈 Strategy Performance Chart</h2>
+                        <p class="text-muted mb-0">Visual analysis of trade execution points on price charts</p>
+                    </div>
+                    <div class="card-body">
+                        <!-- Strategy Selection -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <label for="symbolSelect" class="form-label">Currency Pair</label>
+                                <select class="form-select" id="symbolSelect">
+                                    <option value="EURUSD">EUR/USD</option>
+                                    <option value="GBPUSD">GBP/USD</option>
+                                    <option value="USDJPY">USD/JPY</option>
+                                    <option value="USDCHF">USD/CHF</option>
+                                    <option value="USDCAD">USD/CAD</option>
+                                    <option value="AUDUSD">AUD/USD</option>
+                                    <option value="NZDUSD">NZD/USD</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="timeframeSelect" class="form-label">Timeframe</label>
+                                <select class="form-select" id="timeframeSelect">
+                                    <option value="5_M">5 Minutes</option>
+                                    <option value="30_M" selected>30 Minutes</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label for="strategySelect" class="form-label">Strategy</label>
+                                <select class="form-select" id="strategySelect">
+                                    <option value="RSI">RSI Strategy</option>
+                                    <option value="MovingAverage">MA Crossover</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="startDate" class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="startDate" value="2024-01-01">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <button class="btn btn-primary w-100" onclick="loadStrategyChart()">
+                                    🚀 Run Analysis
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Performance Summary -->
+                        <div class="row mb-4" id="performanceSummary" style="display: none;">
+                            <div class="col-md-2">
+                                <div class="card bg-success text-white">
+                                    <div class="card-body text-center py-2">
+                                        <h6 class="mb-1">Total P&L</h6>
+                                        <h4 id="totalPnL">$0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="card bg-info text-white">
+                                    <div class="card-body text-center py-2">
+                                        <h6 class="mb-1">Win Rate</h6>
+                                        <h4 id="winRate">0%</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="card bg-warning text-dark">
+                                    <div class="card-body text-center py-2">
+                                        <h6 class="mb-1">Total Trades</h6>
+                                        <h4 id="totalTrades">0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="card bg-secondary text-white">
+                                    <div class="card-body text-center py-2">
+                                        <h6 class="mb-1">Profit Factor</h6>
+                                        <h4 id="profitFactor">0</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="card bg-danger text-white">
+                                    <div class="card-body text-center py-2">
+                                        <h6 class="mb-1">Max Drawdown</h6>
+                                        <h4 id="maxDrawdown">0%</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="card bg-primary text-white">
+                                    <div class="card-body text-center py-2">
+                                        <h6 class="mb-1">Return</h6>
+                                        <h4 id="totalReturn">0%</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart Container -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div id="strategyChart" style="height: 600px; border: 1px solid #333; border-radius: 8px;">
+                                    <div class="d-flex justify-content-center align-items-center h-100">
+                                        <div class="text-center">
+                                            <h4 class="text-muted">📊 Select parameters and click "Run Analysis"</h4>
+                                            <p class="text-muted">Your strategy chart with buy/sell signals will appear here</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Trading Legend -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="alert alert-info">
+                                    <h6>📍 Chart Legend:</h6>
+                                    <span class="badge bg-success me-2">🟢 Green Triangles Up</span> Buy signals (Long positions)
+                                    <span class="badge bg-danger me-2">🔴 Red Triangles Down</span> Sell signals (Short positions)
+                                    <span class="badge bg-warning text-dark me-2">🟡 Yellow Squares</span> Position closes
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function loadStrategyChart() {
+            const symbol = document.getElementById('symbolSelect').value;
+            const timeframe = document.getElementById('timeframeSelect').value;
+            const strategy = document.getElementById('strategySelect').value;
+            const startDate = document.getElementById('startDate').value;
+            
+            // Show loading
+            document.getElementById('strategyChart').innerHTML = `
+                <div class="d-flex justify-content-center align-items-center h-100">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <h5 class="mt-3">🔄 Running strategy backtest...</h5>
+                        <p class="text-muted">Analyzing ${symbol} with ${strategy} strategy</p>
+                    </div>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`/api/strategy-chart/${symbol}/${timeframe}?strategy=${strategy}&start_date=${startDate}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Display chart
+                    const chartData = JSON.parse(data.chart);
+                    Plotly.newPlot('strategyChart', chartData.data, chartData.layout, {responsive: true});
+                    
+                    // Update performance summary
+                    const perf = data.performance;
+                    document.getElementById('totalPnL').textContent = `$${perf.total_pnl?.toFixed(2) || '0.00'}`;
+                    document.getElementById('winRate').textContent = `${perf.win_rate?.toFixed(1) || '0'}%`;
+                    document.getElementById('totalTrades').textContent = perf.total_trades || '0';
+                    document.getElementById('profitFactor').textContent = perf.profit_factor?.toFixed(2) || '0.00';
+                    document.getElementById('maxDrawdown').textContent = `${perf.max_drawdown?.toFixed(1) || '0'}%`;
+                    
+                    // Calculate return percentage
+                    const returnPct = ((perf.balance - 10000) / 10000) * 100;
+                    document.getElementById('totalReturn').textContent = `${returnPct?.toFixed(1) || '0'}%`;
+                    
+                    // Show performance summary
+                    document.getElementById('performanceSummary').style.display = 'block';
+                    
+                } else {
+                    document.getElementById('strategyChart').innerHTML = `
+                        <div class="d-flex justify-content-center align-items-center h-100">
+                            <div class="text-center">
+                                <h4 class="text-danger">❌ Error: ${data.error}</h4>
+                                <p class="text-muted">Please check your data files and try again</p>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                document.getElementById('strategyChart').innerHTML = `
+                    <div class="d-flex justify-content-center align-items-center h-100">
+                        <div class="text-center">
+                            <h4 class="text-danger">❌ Network Error</h4>
+                            <p class="text-muted">${error.message}</p>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-load default chart on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Optional: Load default chart automatically
+            // loadStrategyChart();
+        });
+    </script>
+</body>
+</html>
