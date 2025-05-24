@@ -6,6 +6,8 @@ import logging
 from flask import Flask, request, jsonify, render_template_string, send_from_directory
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
+from strategy_tester import StrategyTester, test_moving_average_strategy, test_rsi_strategy, optimize_ma_strategy
+from strategies.example_strategies import MovingAverageCrossover, RSIStrategy, MACDStrategy
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
