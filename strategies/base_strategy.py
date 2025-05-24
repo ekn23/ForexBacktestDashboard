@@ -40,34 +40,165 @@ class BaseStrategy(ABC):
     
     def add_indicator(self, data: pd.DataFrame, name: str, **kwargs) -> pd.DataFrame:
         """
-        Add technical indicators to the data
+        Add technical indicators to the data using comprehensive indicator library
         """
+        from indicators.technical_indicators import TechnicalIndicators
+        from indicators.pattern_recognition import PatternRecognition
+        
+        # Moving Averages
         if name == 'sma':
             period = kwargs.get('period', 14)
-            data[f'sma_{period}'] = data['Close'].rolling(window=period).mean()
+            data[f'sma_{period}'] = TechnicalIndicators.sma(data['Close'], period)
         
         elif name == 'ema':
             period = kwargs.get('period', 14)
-            data[f'ema_{period}'] = data['Close'].ewm(span=period).mean()
+            data[f'ema_{period}'] = TechnicalIndicators.ema(data['Close'], period)
         
+        elif name == 'wma':
+            period = kwargs.get('period', 14)
+            data[f'wma_{period}'] = TechnicalIndicators.wma(data['Close'], period)
+        
+        elif name == 'vwma' and 'Volume' in data.columns:
+            period = kwargs.get('period', 14)
+            data[f'vwma_{period}'] = TechnicalIndicators.vwma(data['Close'], data['Volume'], period)
+        
+        # Oscillators
         elif name == 'rsi':
             period = kwargs.get('period', 14)
-            delta = data['Close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-            rs = gain / loss
-            data[f'rsi_{period}'] = 100 - (100 / (1 + rs))
+            data[f'rsi_{period}'] = TechnicalIndicators.rsi(data['Close'], period)
         
+        elif name == 'stochastic':
+            k_period = kwargs.get('k_period', 14)
+            d_period = kwargs.get('d_period', 3)
+            k, d = TechnicalIndicators.stochastic(data['High'], data['Low'], data['Close'], k_period, d_period)
+            data[f'stoch_k_{k_period}'] = k
+            data[f'stoch_d_{d_period}'] = d
+        
+        elif name == 'williams_r':
+            period = kwargs.get('period', 14)
+            data[f'williams_r_{period}'] = TechnicalIndicators.williams_r(data['High'], data['Low'], data['Close'], period)
+        
+        elif name == 'cci':
+            period = kwargs.get('period', 20)
+            data[f'cci_{period}'] = TechnicalIndicators.cci(data['High'], data['Low'], data['Close'], period)
+        
+        # MACD
         elif name == 'macd':
             fast = kwargs.get('fast', 12)
             slow = kwargs.get('slow', 26)
             signal = kwargs.get('signal', 9)
-            
-            ema_fast = data['Close'].ewm(span=fast).mean()
-            ema_slow = data['Close'].ewm(span=slow).mean()
-            data['macd'] = ema_fast - ema_slow
-            data['macd_signal'] = data['macd'].ewm(span=signal).mean()
-            data['macd_histogram'] = data['macd'] - data['macd_signal']
+            macd, signal_line, histogram = TechnicalIndicators.macd(data['Close'], fast, slow, signal)
+            data['macd'] = macd
+            data['macd_signal'] = signal_line
+            data['macd_histogram'] = histogram
+        
+        # Bands and Channels
+        elif name == 'bollinger_bands':
+            period = kwargs.get('period', 20)
+            std_dev = kwargs.get('std_dev', 2)
+            upper, middle, lower = TechnicalIndicators.bollinger_bands(data['Close'], period, std_dev)
+            data['bb_upper'] = upper
+            data['bb_middle'] = middle
+            data['bb_lower'] = lower
+        
+        elif name == 'keltner_channels':
+            period = kwargs.get('period', 20)
+            multiplier = kwargs.get('multiplier', 2)
+            upper, middle, lower = TechnicalIndicators.keltner_channels(data['High'], data['Low'], data['Close'], period, multiplier)
+            data['kc_upper'] = upper
+            data['kc_middle'] = middle
+            data['kc_lower'] = lower
+        
+        elif name == 'donchian_channels':
+            period = kwargs.get('period', 20)
+            upper, middle, lower = TechnicalIndicators.donchian_channels(data['High'], data['Low'], period)
+            data['dc_upper'] = upper
+            data['dc_middle'] = middle
+            data['dc_lower'] = lower
+        
+        # Trend Indicators
+        elif name == 'atr':
+            period = kwargs.get('period', 14)
+            data[f'atr_{period}'] = TechnicalIndicators.atr(data['High'], data['Low'], data['Close'], period)
+        
+        elif name == 'adx':
+            period = kwargs.get('period', 14)
+            adx, di_plus, di_minus = TechnicalIndicators.adx(data['High'], data['Low'], data['Close'], period)
+            data[f'adx_{period}'] = adx
+            data[f'di_plus_{period}'] = di_plus
+            data[f'di_minus_{period}'] = di_minus
+        
+        elif name == 'parabolic_sar':
+            af_start = kwargs.get('af_start', 0.02)
+            af_increment = kwargs.get('af_increment', 0.02)
+            af_max = kwargs.get('af_max', 0.2)
+            data['parabolic_sar'] = TechnicalIndicators.parabolic_sar(data['High'], data['Low'], af_start, af_increment, af_max)
+        
+        # Ichimoku Cloud
+        elif name == 'ichimoku':
+            tenkan, kijun, senkou_a, senkou_b, chikou = TechnicalIndicators.ichimoku(data['High'], data['Low'], data['Close'])
+            data['ichimoku_tenkan'] = tenkan
+            data['ichimoku_kijun'] = kijun
+            data['ichimoku_senkou_a'] = senkou_a
+            data['ichimoku_senkou_b'] = senkou_b
+            data['ichimoku_chikou'] = chikou
+        
+        # Volume Indicators
+        elif name == 'obv' and 'Volume' in data.columns:
+            data['obv'] = TechnicalIndicators.obv(data['Close'], data['Volume'])
+        
+        elif name == 'mfi' and 'Volume' in data.columns:
+            period = kwargs.get('period', 14)
+            data[f'mfi_{period}'] = TechnicalIndicators.mfi(data['High'], data['Low'], data['Close'], data['Volume'], period)
+        
+        # Advanced Oscillators
+        elif name == 'awesome_oscillator':
+            data['ao'] = TechnicalIndicators.awesome_oscillator(data['High'], data['Low'])
+        
+        elif name == 'accelerator_oscillator':
+            data['ac'] = TechnicalIndicators.accelerator_oscillator(data['High'], data['Low'], data['Close'])
+        
+        elif name == 'aroon':
+            period = kwargs.get('period', 14)
+            aroon_up, aroon_down = TechnicalIndicators.aroon(data['High'], data['Low'], period)
+            data[f'aroon_up_{period}'] = aroon_up
+            data[f'aroon_down_{period}'] = aroon_down
+        
+        elif name == 'cmo':
+            period = kwargs.get('period', 14)
+            data[f'cmo_{period}'] = TechnicalIndicators.chande_momentum_oscillator(data['Close'], period)
+        
+        elif name == 'vortex':
+            period = kwargs.get('period', 14)
+            vi_plus, vi_minus = TechnicalIndicators.vortex(data['High'], data['Low'], data['Close'], period)
+            data[f'vi_plus_{period}'] = vi_plus
+            data[f'vi_minus_{period}'] = vi_minus
+        
+        elif name == 'elder_ray':
+            period = kwargs.get('period', 13)
+            bull_power, bear_power = TechnicalIndicators.elder_ray(data['High'], data['Low'], data['Close'], period)
+            data[f'bull_power_{period}'] = bull_power
+            data[f'bear_power_{period}'] = bear_power
+        
+        elif name == 'ultimate_oscillator':
+            period1 = kwargs.get('period1', 7)
+            period2 = kwargs.get('period2', 14)
+            period3 = kwargs.get('period3', 28)
+            data['ultimate_oscillator'] = TechnicalIndicators.ultimate_oscillator(data['High'], data['Low'], data['Close'], period1, period2, period3)
+        
+        # Pattern Recognition
+        elif name == 'candlestick_patterns':
+            patterns = PatternRecognition.detect_candlestick_patterns(data)
+            for pattern_name, pattern_data in patterns.items():
+                data[f'pattern_{pattern_name}'] = pattern_data
+        
+        elif name == 'support_resistance':
+            window = kwargs.get('window', 20)
+            min_touches = kwargs.get('min_touches', 2)
+            levels = PatternRecognition.detect_support_resistance(data, window, min_touches)
+            # Store as metadata since these are price levels, not time series
+            data.attrs['support_levels'] = levels['support']
+            data.attrs['resistance_levels'] = levels['resistance']
         
         return data
     
