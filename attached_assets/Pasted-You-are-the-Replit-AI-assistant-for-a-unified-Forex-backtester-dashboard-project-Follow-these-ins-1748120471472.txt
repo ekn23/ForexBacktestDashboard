@@ -1,0 +1,87 @@
+You are the Replit AI assistant for a unified Forex backtester + dashboard project. Follow these instructions exactly, in order, to create a working environment in this workspace:
+
+1. **Project Structure**  
+   - Create a folder named `data/` for CSV upload.  
+   - Create a file `requirements.txt` with these lines:
+     ```
+     fastapi
+     uvicorn
+     pandas
+     numpy
+     plotly
+     python-multipart
+     ```
+   - Create a file `.replit` with:
+     ```
+     run = "bash setup.sh"
+     ```
+
+2. **Prompt User for Data**  
+   - Immediately output:  
+     > “Please upload all your historical CSV files (named like `EURUSD_Candlestick_5_M_BID_…csv`) into the `data/` folder, then click “Run”. Once they’re uploaded, reply “DATA UPLOADED” to continue.”
+
+3. **Generate `main.py`**  
+   Create `main.py` in the root with this content:
+   ```python
+   import os, pandas as pd
+   from fastapi import FastAPI
+   from fastapi.middleware.cors import CORSMiddleware
+   from fastapi.staticfiles import StaticFiles
+
+   app = FastAPI()
+   app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+   DATA_DIR = "data"
+
+   def load_backtest_stats():
+       net_profit, total_trades, win, loss = [], [], 0, 0
+       for fname in os.listdir(DATA_DIR):
+           if not fname.lower().endswith(".csv"): continue
+           parts = fname.split("_")
+           sym = parts[0]
+           tf = parts[2] + "_" + parts[3]
+           df = pd.read_csv(os.path.join(DATA_DIR, fname))
+           df["pnl"] = df["Close"] - df["Open"]
+           profit = float(df["pnl"].sum())
+           trades = int(len(df))
+           w = int((df["pnl"] > 0).sum()); l = int((df["pnl"] <= 0).sum())
+           win += w; loss += l
+           net_profit.append({"symbol": sym, "timeframe": tf, "profit": profit})
+           total_trades.append({"symbol": sym, "timeframe": tf, "trades": trades})
+       return {"net_profit": net_profit, "total_trades": total_trades, "win": win, "loss": loss}
+
+   @app.get("/api/backtest_results")
+   async def backtest_results():
+       stats = load_backtest_stats()
+       return {"net_profit": stats["net_profit"], "total_trades": stats["total_trades"]}
+
+   @app.get("/api/win_loss_pie")
+   async def win_loss_pie():
+       stats = load_backtest_stats()
+       return {"win": stats["win"], "loss": stats["loss"]}
+
+   @app.get("/api/detailed_trades")
+   async def detailed_trades():
+       details = []
+       for fname in os.listdir(DATA_DIR):
+           if not fname.lower().endswith(".csv"): continue
+           parts = fname.split("_")
+           sym = parts[0]
+           tf = parts[2] + "_" + parts[3]
+           df = pd.read_csv(os.path.join(DATA_DIR, fname))
+           if "EntryTime" in df.columns and "ExitTime" in df.columns:
+               for idx, row in df.iterrows():
+                   pnl = float(row["ExitPrice"] - row["EntryPrice"]) if "ExitPrice" in row and "EntryPrice" in row else float(row["Close"] - row["Open"])
+                   duration = None
+                   try:
+                       duration = (pd.to_datetime(row["ExitTime"]) - pd.to_datetime(row["EntryTime"])).total_seconds()
+                   except: pass
+                   details.append({
+                       "symbol": sym, "timeframe": tf,
+                       "entry": row.get("EntryTime"), "exit": row.get("ExitTime"),
+                       "pnl": pnl, "duration": duration
+                   })
+       return details
+
+   # Serve static files including overview.html
+   app.mount("/", StaticFiles(directory=".", html=True), name="static")

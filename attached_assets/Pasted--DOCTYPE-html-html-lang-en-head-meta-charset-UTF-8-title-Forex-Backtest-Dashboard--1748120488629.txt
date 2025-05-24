@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Forex Backtest Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .card { display: inline-block; margin: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; width: 180px; text-align: center; }
+    #charts, #tables { margin-top: 30px; }
+    #trade-table { width: 100%; border-collapse: collapse; }
+    #trade-table th, #trade-table td { border: 1px solid #ddd; padding: 8px; }
+    #trade-table tr.win { background: #e0f7e9; }
+    #trade-table tr.loss { background: #fde2e2; }
+  </style>
+</head>
+<body>
+  <h1>Forex Backtest Dashboard</h1>
+  <div id="metrics">
+    <div class="card">Net Profit<br>$<span id="net-profit">0.0000</span></div>
+    <div class="card">Total Trades<br><span id="total-trades">0</span></div>
+    <div class="card">Win Rate<br><span id="win-rate">0%</span></div>
+    <div class="card">Max Drawdown<br>$<span id="max-drawdown">0.0000</span></div>
+    <div class="card">Avg Duration<br><span id="avg-duration">0s</span></div>
+  </div>
+
+  <div id="charts">
+    <h3>Net Profit by Symbol & Timeframe</h3>
+    <canvas id="profit-chart" width="700" height="400"></canvas>
+    <h3>Win/Loss Distribution</h3>
+    <canvas id="win-loss-pie" width="400" height="400"></canvas>
+    <h3>Price Chart & Trades</h3>
+    <select id="pair-select"></select>
+    <div id="price-chart" style="width:100%;height:400px;"></div>
+  </div>
+
+  <div id="tables">
+    <h3>Detailed Trades</h3>
+    <table id="trade-table">
+      <thead>
+        <tr><th>Symbol</th><th>Timeframe</th><th>Entry</th><th>Exit</th><th>PnL</th><th>Duration (s)</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function fetchData() {
+      const res = await fetch('/api/backtest_results');
+      const json = await res.json();
+      return json;
+    }
+    async function fetchPie() {
+      const res = await fetch('/api/win_loss_pie');
+      return await res.json();
+    }
+    async function fetchDetails() {
+      const res = await fetch('/api/detailed_trades');
+      return await res.json();
+    }
+
+    function computeDrawdown(profits) {
+      let peak = 0, maxDD = 0, cumul = 0;
+      profits.forEach(p => {
+        cumul += p;
+        peak = Math.max(peak, cumul);
+        maxDD = Math.max(maxDD, peak - cumul);
+      });
+      return maxDD.toFixed(4);
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Load stats
+      const { net_profit, total_trades, win, loss } = await fetchData();
+      const pie = await fetchPie();
+      const details = await fetchDetails();
+
+      // Metrics
+      const profits = net_profit.map(r => r.profit);
+      const tradesCount = total_trades.map(r => r.trades).reduce((a,b)=>a+b,0);
+      const netTotal = profits.reduce((a,b)=>a+b,0).toFixed(4);
+      const winRate = ((pie.win/(pie.win+pie.loss))*100).toFixed(2) + '%';
+      const maxDD = computeDrawdown(profits);
+      const durations = details.map(d=>d.duration||0);
+      const avgDur = (durations.reduce((a,b)=>a+b,0)/durations.length||0).toFixed(1) + 's';
+
+      document.getElementById('net-profit').textContent = netTotal;
+      document.getElementById('total-trades').textContent = tradesCount;
+      document.getElementById('win-rate').textContent = winRate;
+      document.getElementById('max-drawdown').textContent = maxDD;
+      document.getElementById('avg-duration').textContent = avgDur;
+
+      // Bar & Pie charts
+      const labels = net_profit.map(r=>`${r.symbol} (${r.timeframe})`);
+      new Chart(document.getElementById('profit-chart'), {
+        type:'bar',
+        data:{ labels, datasets:[{ label:'Net Profit', data:profits }] },
+        options:{ scales:{ y:{ beginAtZero:true } } }
+      });
+      new Chart(document.getElementById('win-loss-pie'), {
+        type:'pie',
+        data:{ labels:['Wins','Losses'], datasets:[{ data:[pie.win,pie.loss] }] }
+      });
+
+      // Dropdown & Price chart with Plotly
+      const select = document.getElementById('pair-select');
+      const unique = [...new Set(net_profit.map(r=>r.symbol+'_'+r.timeframe))];
+      unique.forEach(p=>{
+        const opt = document.createElement('option'); opt.value= p; opt.text=p;
+        select.appendChild(opt);
+      });
+      select.addEventListener('change', async () => {
+        const [sym, tf] = select.value.split('_');
+        const csv = dataUrl=`/data/${sym}_Candlestick_${tf.replace('_','_')}_*.csv`;
+        // In Replit you may need to fetch raw data another way; here assume CSV is served statically
+        const resp = await fetch(csv);
+        const df = await resp.text();
+        // parse CSV, then plot candlesticks & entry/exit markers via Plotly
+      });
+
+      // Detailed trades table
+      const tbody = document.querySelector('#trade-table tbody');
+      details.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.className = d.pnl>0?'win':'loss';
+        tr.innerHTML = `<td>${d.symbol}</td><td>${d.timeframe}</td>
+                        <td>${d.entry||''}</td><td>${d.exit||''}</td>
+                        <td>${d.pnl.toFixed(4)}</td><td>${d.duration||0}</td>`;
+        tbody.appendChild(tr);
+      });
+    });
+  </script>
+</body>
+</html>
