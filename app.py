@@ -236,10 +236,14 @@ def detailed_trades():
             
             for idx, row in df.iterrows():
                 try:
-                    if 'EntryPrice' in row and 'ExitPrice' in row and pd.notna(row['EntryPrice']) and pd.notna(row['ExitPrice']):
+                    if 'pnl' in row and pd.notna(row['pnl']):
+                        pnl = float(row['pnl'])
+                    elif 'EntryPrice' in row and 'ExitPrice' in row and pd.notna(row['EntryPrice']) and pd.notna(row['ExitPrice']):
                         pnl = float(row['ExitPrice'] - row['EntryPrice'])
-                    else:
+                    elif 'Close' in row and 'Open' in row:
                         pnl = float(row['Close'] - row['Open'])
+                    else:
+                        pnl = 0.0
                     
                     duration = None
                     if 'EntryTime' in row and 'ExitTime' in row:
