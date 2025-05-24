@@ -28,7 +28,7 @@ class StrategyTester:
             raise FileNotFoundError(f"Data file not found: {filename}")
         
         df = pd.read_csv(filepath)
-        df['Local time'] = pd.to_datetime(df['Local time'])
+        df['Local time'] = pd.to_datetime(df['Local time'], utc=True)
         df = df.sort_values('Local time')
         return df
     
@@ -43,15 +43,23 @@ class StrategyTester:
         # Filter by date range if provided
         if start_date:
             start_date_parsed = pd.to_datetime(start_date) if isinstance(start_date, str) else start_date
-            # Make timezone-aware if data has timezone info
-            if data['Local time'].dt.tz is not None and start_date_parsed.tz is None:
-                start_date_parsed = start_date_parsed.tz_localize('UTC')
+            # Handle timezone compatibility
+            try:
+                if hasattr(data['Local time'].dtype, 'tz') and data['Local time'].dt.tz is not None:
+                    if start_date_parsed.tz is None:
+                        start_date_parsed = start_date_parsed.tz_localize('UTC')
+            except:
+                pass  # If timezone handling fails, proceed without it
             data = data[data['Local time'] >= start_date_parsed]
         if end_date:
             end_date_parsed = pd.to_datetime(end_date) if isinstance(end_date, str) else end_date
-            # Make timezone-aware if data has timezone info
-            if data['Local time'].dt.tz is not None and end_date_parsed.tz is None:
-                end_date_parsed = end_date_parsed.tz_localize('UTC')
+            # Handle timezone compatibility
+            try:
+                if hasattr(data['Local time'].dtype, 'tz') and data['Local time'].dt.tz is not None:
+                    if end_date_parsed.tz is None:
+                        end_date_parsed = end_date_parsed.tz_localize('UTC')
+            except:
+                pass  # If timezone handling fails, proceed without it
             data = data[data['Local time'] <= end_date_parsed]
         
         if len(data) < 50:
