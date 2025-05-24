@@ -448,7 +448,8 @@ def strategy_chart_api(symbol, timeframe):
         
         # Apply date filtering if provided
         if start_date:
-            df = df[df['Timestamp'] >= start_date]
+            start_date_parsed = pd.to_datetime(start_date)
+            df = df[df['Timestamp'] >= start_date_parsed]
         
         # Sample data for performance (every 10th point for smooth chart)
         df_chart = df.iloc[::10].copy()
