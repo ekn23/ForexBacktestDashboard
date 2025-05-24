@@ -43,9 +43,15 @@ class StrategyTester:
         # Filter by date range if provided
         if start_date:
             start_date_parsed = pd.to_datetime(start_date) if isinstance(start_date, str) else start_date
+            # Make timezone-aware if data has timezone info
+            if data['Local time'].dt.tz is not None and start_date_parsed.tz is None:
+                start_date_parsed = start_date_parsed.tz_localize('UTC')
             data = data[data['Local time'] >= start_date_parsed]
         if end_date:
             end_date_parsed = pd.to_datetime(end_date) if isinstance(end_date, str) else end_date
+            # Make timezone-aware if data has timezone info
+            if data['Local time'].dt.tz is not None and end_date_parsed.tz is None:
+                end_date_parsed = end_date_parsed.tz_localize('UTC')
             data = data[data['Local time'] <= end_date_parsed]
         
         if len(data) < 50:
