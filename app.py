@@ -234,32 +234,35 @@ def detailed_trades():
             if df.empty:
                 continue
             
-            for idx, row in df.iterrows():
+            # Sample only recent data to avoid timeout (last 20 rows per file)
+            sample_df = df.tail(20)
+            
+            for idx, row in sample_df.iterrows():
                 try:
-                    if 'pnl' in row and pd.notna(row['pnl']):
-                        pnl = float(row['pnl'])
-                    elif 'EntryPrice' in row and 'ExitPrice' in row and pd.notna(row['EntryPrice']) and pd.notna(row['ExitPrice']):
-                        pnl = float(row['ExitPrice'] - row['EntryPrice'])
-                    elif 'Close' in row and 'Open' in row:
-                        pnl = float(row['Close'] - row['Open'])
+                    # For OHLC candlestick data, calculate price movement
+                    if 'Close' in df.columns and 'Open' in df.columns:
+                        pnl = float(row['Close']) - float(row['Open'])
                     else:
                         pnl = 0.0
                     
+                    # Simple duration calculation for candlestick data
                     duration = None
-                    if 'EntryTime' in row and 'ExitTime' in row:
+                    if 'Local time' in row:
                         try:
-                            entry_time = pd.to_datetime(row['EntryTime'])
-                            exit_time = pd.to_datetime(row['ExitTime'])
-                            duration = (exit_time - entry_time).total_seconds()
+                            # Duration represents the timeframe period
+                            if file_info["timeframe"] == "5M":
+                                duration = 5 * 60  # 5 minutes in seconds
+                            elif file_info["timeframe"] == "30M":
+                                duration = 30 * 60  # 30 minutes in seconds
                         except:
                             duration = None
                     
                     details.append({
                         "symbol": file_info["symbol"],
                         "timeframe": file_info["timeframe"],
-                        "entry": str(row.get('EntryTime', '')) if 'EntryTime' in row else '',
-                        "exit": str(row.get('ExitTime', '')) if 'ExitTime' in row else '',
-                        "pnl": pnl,
+                        "entry": str(row.get('Local time', idx)),
+                        "exit": str(row.get('Local time', idx)),
+                        "pnl": round(pnl, 5),
                         "duration": duration
                     })
                 except Exception as e:
