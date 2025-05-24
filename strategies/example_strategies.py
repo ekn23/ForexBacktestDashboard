@@ -84,20 +84,38 @@ class RSIStrategy(BaseStrategy):
         }
     
     def calculate_rsi(self, prices: pd.Series) -> float:
-        """Calculate RSI indicator"""
-        if len(prices) < self.rsi_period + 1:
-            return 50.0  # Neutral RSI when not enough data
+        """Calculate RSI indicator - simple and reliable"""
+        if len(prices) < 20:
+            return 50.0
         
-        delta = prices.diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=self.rsi_period).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=self.rsi_period).mean()
+        # Get recent price changes
+        recent_prices = prices.tail(20)
+        changes = recent_prices.diff()[1:]  # Remove first NaN
         
-        # Avoid division by zero
-        loss = loss.replace(0, 0.0001)
-        rs = gain / loss
+        # Split gains and losses
+        gains = []
+        losses = []
+        
+        for change in changes:
+            if change > 0:
+                gains.append(change)
+                losses.append(0)
+            else:
+                gains.append(0)
+                losses.append(abs(change))
+        
+        # Calculate averages
+        avg_gain = sum(gains[-14:]) / 14 if len(gains) >= 14 else 0
+        avg_loss = sum(losses[-14:]) / 14 if len(losses) >= 14 else 0.001
+        
+        # Calculate RSI
+        if avg_loss == 0:
+            return 100.0
+        
+        rs = avg_gain / avg_loss
         rsi = 100 - (100 / (1 + rs))
         
-        return rsi.iloc[-1] if not pd.isna(rsi.iloc[-1]) else 50.0
+        return max(0, min(100, rsi))
     
     def on_tick(self, data: pd.Series) -> Optional[Dict]:
         """
