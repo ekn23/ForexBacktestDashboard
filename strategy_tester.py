@@ -42,9 +42,11 @@ class StrategyTester:
         
         # Filter by date range if provided
         if start_date:
-            data = data[data['Local time'] >= start_date]
+            start_date_parsed = pd.to_datetime(start_date) if isinstance(start_date, str) else start_date
+            data = data[data['Local time'] >= start_date_parsed]
         if end_date:
-            data = data[data['Local time'] <= end_date]
+            end_date_parsed = pd.to_datetime(end_date) if isinstance(end_date, str) else end_date
+            data = data[data['Local time'] <= end_date_parsed]
         
         if len(data) < 50:
             return {"error": "Not enough data for backtesting"}
