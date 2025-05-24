@@ -119,13 +119,53 @@ class RSIStrategy(BaseStrategy):
     
     def on_tick(self, data: pd.Series) -> Optional[Dict]:
         """
-        Generate signals based on RSI levels
+        Generate signals based on simple price action
         """
-        if len(data) < self.rsi_period + 1:
+        try:
+            # Get current price data
+            current_price = float(data['Close'])
+            high_price = float(data['High'])
+            low_price = float(data['Low'])
+            
+            # Simple strategy based on price action
+            # Buy when price is near the low of the candle (potential support)
+            # Sell when price is near the high of the candle (potential resistance)
+            
+            price_range = high_price - low_price
+            if price_range == 0:
+                return None
+                
+            # Calculate position within the range
+            position_in_range = (current_price - low_price) / price_range
+            
+            # Generate signals based on position
+            if position_in_range <= 0.2 and not self.open_positions:  # Near low - buy signal
+                return {
+                    'action': 'BUY',
+                    'lot_size': 0.1,
+                    'sl': low_price - (price_range * 0.5),
+                    'tp': current_price + (price_range * 1.5),
+                    'reason': 'Price near candle low - potential support'
+                }
+            elif position_in_range >= 0.8 and not self.open_positions:  # Near high - sell signal
+                return {
+                    'action': 'SELL', 
+                    'lot_size': 0.1,
+                    'sl': high_price + (price_range * 0.5),
+                    'tp': current_price - (price_range * 1.5),
+                    'reason': 'Price near candle high - potential resistance'
+                }
+            elif self.open_positions:
+                # Simple exit strategy
+                return {
+                    'action': 'CLOSE',
+                    'reason': 'Simple exit after signal'
+                }
+                
             return None
-        
-        rsi = self.calculate_rsi(data['Close'])
-        current_price = data['Close'].iloc[-1]
+            
+        except Exception as e:
+            return None
         
         # Buy signal - RSI oversold
         if rsi < self.oversold and not self.open_positions:
