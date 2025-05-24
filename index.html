@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Backtest Dashboard</title>
+    
+    <!-- Bootstrap CSS (Replit Theme) -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    
+    <!-- Plotly -->
+    <script src="https://cdn.plot.ly/plotly-2.12.1.min.js"></script>
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    
+    <style>
+        .metric-card {
+            background: var(--bs-dark);
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--bs-info);
+        }
+        
+        .metric-label {
+            font-size: 0.9rem;
+            color: var(--bs-secondary);
+            margin-bottom: 0.5rem;
+        }
+        
+        .chart-container {
+            background: var(--bs-dark);
+            border: 1px solid var(--bs-border-color);
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .trade-table {
+            background: var(--bs-dark);
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+        
+        .trade-win {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+        }
+        
+        .trade-loss {
+            background-color: rgba(220, 53, 69, 0.1) !important;
+        }
+        
+        .upload-area {
+            border: 2px dashed var(--bs-border-color);
+            border-radius: 0.5rem;
+            padding: 3rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: var(--bs-info);
+        }
+        
+        .upload-area.dragover {
+            border-color: var(--bs-success);
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .error-message {
+            color: var(--bs-danger);
+            margin-top: 1rem;
+        }
+        
+        .success-message {
+            color: var(--bs-success);
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-4 text-center">
+                    <i class="bi bi-graph-up"></i>
+                    Forex Backtest Dashboard
+                </h1>
+                <p class="lead text-center text-muted">
+                    Analyze your trading strategy performance with comprehensive metrics and visualizations
+                </p>
+            </div>
+        </div>
+
+        <!-- File Upload Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">
+                            <i class="bi bi-cloud-upload"></i>
+                            Upload CSV Files
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="upload-area" id="upload-area">
+                            <i class="bi bi-cloud-upload display-1 text-muted"></i>
+                            <h5>Drop CSV files here or click to browse</h5>
+                            <p class="text-muted">Upload your forex trading data files (EURUSD_Candlestick_5_M_BID_*.csv format)</p>
+                            <input type="file" id="file-input" multiple accept=".csv" style="display: none;">
+                        </div>
+                        <div id="upload-status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metrics Overview -->
+        <div class="row mb-4" id="metrics-section" style="display: none;">
+            <div class="col-12">
+                <h3 class="mb-3">
+                    <i class="bi bi-speedometer2"></i>
+                    Performance Metrics
+                </h3>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="metric-card">
+                    <div class="metric-label">Net Profit</div>
+                    <div class="metric-value" id="net-profit">$0.0000</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="metric-card">
+                    <div class="metric-label">Total Trades</div>
+                    <div class="metric-value" id="total-trades">0</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="metric-card">
+                    <div class="metric-label">Win Rate</div>
+                    <div class="metric-value" id="win-rate">0%</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="metric-card">
+                    <div class="metric-label">Max Drawdown</div>
+                    <div class="metric-value" id="max-drawdown">$0.0000</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="metric-card">
+                    <div class="metric-label">Avg Duration</div>
+                    <div class="metric-value" id="avg-duration">0s</div>
+                </div>
+            </div>
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="metric-card">
+                    <div class="metric-label">Sharpe Ratio</div>
+                    <div class="metric-value" id="sharpe-ratio">0.00</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mb-4" id="charts-section" style="display: none;">
+            <!-- Profit Chart -->
+            <div class="col-lg-8 col-12 mb-4">
+                <div class="chart-container">
+                    <h5 class="mb-3">
+                        <i class="bi bi-bar-chart"></i>
+                        Net Profit by Symbol & Timeframe
+                    </h5>
+                    <canvas id="profit-chart" height="300"></canvas>
+                </div>
+            </div>
+            
+            <!-- Win/Loss Pie Chart -->
+            <div class="col-lg-4 col-12 mb-4">
+                <div class="chart-container">
+                    <h5 class="mb-3">
+                        <i class="bi bi-pie-chart"></i>
+                        Win/Loss Distribution
+                    </h5>
+                    <canvas id="win-loss-pie" height="300"></canvas>
+                </div>
+            </div>
+            
+            <!-- Price Chart -->
+            <div class="col-12 mb-4">
+                <div class="chart-container">
+                    <h5 class="mb-3">
+                        <i class="bi bi-graph-up"></i>
+                        Price Chart & Trades
+                    </h5>
+                    <div class="mb-3">
+                        <select id="pair-select" class="form-select">
+                            <option value="">Select a trading pair...</option>
+                        </select>
+                    </div>
+                    <div id="price-chart" style="width:100%;height:400px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Trades Table -->
+        <div class="row" id="trades-section" style="display: none;">
+            <div class="col-12">
+                <div class="chart-container">
+                    <h5 class="mb-3">
+                        <i class="bi bi-table"></i>
+                        Detailed Trades
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-striped" id="trade-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Timeframe</th>
+                                    <th>Entry Time</th>
+                                    <th>Exit Time</th>
+                                    <th>PnL</th>
+                                    <th>Duration (s)</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div class="position-fixed top-50 start-50 translate-middle loading" id="loading">
+        <div class="spinner-border text-info" role="status" style="width: 3rem; height: 3rem;">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let profitChart = null;
+        let pieChart = null;
+
+        // File upload functionality
+        const uploadArea = document.getElementById('upload-area');
+        const fileInput = document.getElementById('file-input');
+        const uploadStatus = document.getElementById('upload-status');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFileSelect);
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            uploadFiles(files);
+        }
+
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            uploadFiles(files);
+        }
+
+        async function uploadFiles(files) {
+            if (!files.length) return;
+
+            const formData = new FormData();
+            for (let file of files) {
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    formData.append('files', file);
+                }
+            }
+
+            showLoading(true);
+            uploadStatus.innerHTML = '<div class="alert alert-info">Uploading files...</div>';
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    uploadStatus.innerHTML = `<div class="alert alert-success">Successfully uploaded ${result.files.length} files</div>`;
+                    await loadDashboardData();
+                } else {
+                    uploadStatus.innerHTML = `<div class="alert alert-danger">Error: ${result.detail}</div>`;
+                }
+            } catch (error) {
+                uploadStatus.innerHTML = `<div class="alert alert-danger">Upload failed: ${error.message}</div>`;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            loading.style.display = show ? 'block' : 'none';
+        }
+
+        async function fetchData(endpoint) {
+            const response = await fetch(endpoint);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        }
+
+        function computeDrawdown(profits) {
+            let peak = 0, maxDD = 0, cumul = 0;
+            profits.forEach(p => {
+                cumul += p;
+                peak = Math.max(peak, cumul);
+                maxDD = Math.max(maxDD, peak - cumul);
+            });
+            return maxDD;
+        }
+
+        function calculateSharpeRatio(profits) {
+            if (profits.length === 0) return 0;
+            const mean = profits.reduce((a, b) => a + b, 0) / profits.length;
+            const variance = profits.reduce((sum, profit) => sum + Math.pow(profit - mean, 2), 0) / profits.length;
+            const stdDev = Math.sqrt(variance);
+            return stdDev === 0 ? 0 : (mean / stdDev);
+        }
+
+        async function loadDashboardData() {
+            try {
+                showLoading(true);
+                
+                const [backtestData, pieData, detailsData] = await Promise.all([
+                    fetchData('/api/backtest_results'),
+                    fetchData('/api/win_loss_pie'),
+                    fetchData('/api/detailed_trades')
+                ]);
+
+                // Show sections
+                document.getElementById('metrics-section').style.display = 'block';
+                document.getElementById('charts-section').style.display = 'block';
+                document.getElementById('trades-section').style.display = 'block';
+
+                // Update metrics
+                updateMetrics(backtestData, pieData, detailsData);
+                
+                // Update charts
+                updateProfitChart(backtestData.net_profit);
+                updatePieChart(pieData);
+                
+                // Update trades table
+                updateTradesTable(detailsData);
+                
+                // Update pair selector
+                updatePairSelector(backtestData.net_profit);
+
+            } catch (error) {
+                console.error('Error loading dashboard data:', error);
+                uploadStatus.innerHTML = `<div class="alert alert-danger">Error loading data: ${error.message}</div>`;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function updateMetrics(backtestData, pieData, detailsData) {
+            const profits = backtestData.net_profit.map(r => r.profit);
+            const trades = backtestData.total_trades.map(r => r.trades);
+            
+            const netTotal = profits.reduce((a, b) => a + b, 0);
+            const totalTrades = trades.reduce((a, b) => a + b, 0);
+            const winRate = pieData.win + pieData.loss > 0 ? 
+                ((pieData.win / (pieData.win + pieData.loss)) * 100) : 0;
+            const maxDrawdown = backtestData.max_drawdown || computeDrawdown(profits);
+            
+            const durations = detailsData.map(d => d.duration || 0).filter(d => d > 0);
+            const avgDuration = durations.length > 0 ? 
+                durations.reduce((a, b) => a + b, 0) / durations.length : 0;
+            
+            const sharpeRatio = calculateSharpeRatio(profits);
+
+            document.getElementById('net-profit').textContent = `$${netTotal.toFixed(4)}`;
+            document.getElementById('total-trades').textContent = totalTrades;
+            document.getElementById('win-rate').textContent = `${winRate.toFixed(1)}%`;
+            document.getElementById('max-drawdown').textContent = `$${maxDrawdown.toFixed(4)}`;
+            document.getElementById('avg-duration').textContent = `${avgDuration.toFixed(0)}s`;
+            document.getElementById('sharpe-ratio').textContent = sharpeRatio.toFixed(2);
+        }
+
+        function updateProfitChart(netProfitData) {
+            const ctx = document.getElementById('profit-chart').getContext('2d');
+            
+            if (profitChart) {
+                profitChart.destroy();
+            }
+            
+            const labels = netProfitData.map(r => `${r.symbol} (${r.timeframe})`);
+            const data = netProfitData.map(r => r.profit);
+            
+            profitChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Net Profit',
+                        data: data,
+                        backgroundColor: data.map(value => value >= 0 ? 'rgba(25, 135, 84, 0.7)' : 'rgba(220, 53, 69, 0.7)'),
+                        borderColor: data.map(value => value >= 0 ? 'rgba(25, 135, 84, 1)' : 'rgba(220, 53, 69, 1)'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                maxRotation: 45
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePieChart(pieData) {
+            const ctx = document.getElementById('win-loss-pie').getContext('2d');
+            
+            if (pieChart) {
+                pieChart.destroy();
+            }
+            
+            pieChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Wins', 'Losses'],
+                    datasets: [{
+                        data: [pieData.win, pieData.loss],
+                        backgroundColor: [
+                            'rgba(25, 135, 84, 0.7)',
+                            'rgba(220, 53, 69, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(25, 135, 84, 1)',
+                            'rgba(220, 53, 69, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: 'rgba(255, 255, 255, 0.7)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateTradesTable(detailsData) {
+            const tbody = document.querySelector('#trade-table tbody');
+            tbody.innerHTML = '';
+            
+            detailsData.forEach(trade => {
+                const row = document.createElement('tr');
+                row.className = trade.pnl > 0 ? 'trade-win' : 'trade-loss';
+                
+                row.innerHTML = `
+                    <td>${trade.symbol}</td>
+                    <td>${trade.timeframe}</td>
+                    <td>${trade.entry || 'N/A'}</td>
+                    <td>${trade.exit || 'N/A'}</td>
+                    <td class="${trade.pnl >= 0 ? 'text-success' : 'text-danger'}">${trade.pnl.toFixed(4)}</td>
+                    <td>${trade.duration ? trade.duration.toFixed(0) : 'N/A'}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        function updatePairSelector(netProfitData) {
+            const select = document.getElementById('pair-select');
+            select.innerHTML = '<option value="">Select a trading pair...</option>';
+            
+            const unique = [...new Set(netProfitData.map(r => `${r.symbol}_${r.timeframe}`))];
+            unique.forEach(pair => {
+                const option = document.createElement('option');
+                option.value = pair;
+                option.textContent = pair.replace('_', ' - ');
+                select.appendChild(option);
+            });
+            
+            select.addEventListener('change', loadPriceChart);
+        }
+
+        async function loadPriceChart() {
+            const select = document.getElementById('pair-select');
+            const selectedPair = select.value;
+            
+            if (!selectedPair) return;
+            
+            const [symbol, timeframe] = selectedPair.split('_');
+            
+            try {
+                const response = await fetchData(`/api/csv_data/${symbol}/${timeframe}`);
+                
+                const traces = [{
+                    x: response.data.map(d => d.timestamp),
+                    open: response.data.map(d => d.open),
+                    high: response.data.map(d => d.high),
+                    low: response.data.map(d => d.low),
+                    close: response.data.map(d => d.close),
+                    type: 'candlestick',
+                    name: `${symbol} ${timeframe}`,
+                    increasing: { line: { color: 'rgba(25, 135, 84, 1)' } },
+                    decreasing: { line: { color: 'rgba(220, 53, 69, 1)' } }
+                }];
+                
+                const layout = {
+                    title: `${symbol} ${timeframe} Price Chart`,
+                    xaxis: { title: 'Time' },
+                    yaxis: { title: 'Price' },
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    font: { color: 'rgba(255, 255, 255, 0.7)' },
+                    margin: { t: 50, r: 50, b: 50, l: 50 }
+                };
+                
+                const config = {
+                    responsive: true,
+                    displayModeBar: true
+                };
+                
+                Plotly.newPlot('price-chart', traces, layout, config);
+            } catch (error) {
+                console.error('Error loading price chart:', error);
+            }
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', () => {
+            // Try to load existing data on page load
+            loadDashboardData().catch(() => {
+                // Ignore errors on initial load if no data exists
+            });
+        });
+    </script>
+</body>
+</html>
