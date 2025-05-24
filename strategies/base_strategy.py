@@ -12,15 +12,27 @@ class BaseStrategy(ABC):
     Base class for all trading strategies
     """
     
-    def __init__(self, symbol: str, timeframe: str, initial_balance: float = 10000):
+    def __init__(self, symbol: str, timeframe: str, trading_config=None):
+        from trading_config import TradingConfig, OANDATradeExecutor
+        
         self.symbol = symbol
         self.timeframe = timeframe
-        self.initial_balance = initial_balance
-        self.balance = initial_balance
-        self.equity = initial_balance
+        self.config = trading_config or TradingConfig()
+        self.executor = OANDATradeExecutor(self.config)
+        
+        self.initial_balance = self.config.starting_capital
+        self.balance = self.initial_balance
+        self.equity = self.initial_balance
+        self.peak_balance = self.initial_balance
+        
         self.trades = []
         self.open_positions = []
         self.parameters = {}
+        
+        # Performance tracking
+        self.daily_pnl = 0.0
+        self.total_margin_used = 0.0
+        self.max_drawdown_reached = 0.0
         
     @abstractmethod
     def on_tick(self, data: pd.Series) -> Optional[Dict]:
