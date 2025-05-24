@@ -297,11 +297,13 @@ def get_csv_data(symbol, timeframe):
                 # Apply date filtering if provided
                 if start_date or end_date:
                     if 'Local time' in df.columns:
-                        df['datetime'] = pd.to_datetime(df['Local time'])
+                        df['datetime'] = pd.to_datetime(df['Local time'], utc=True)
                         if start_date:
-                            df = df[df['datetime'] >= start_date]
+                            start_dt = pd.to_datetime(start_date, utc=True)
+                            df = df[df['datetime'] >= start_dt]
                         if end_date:
-                            df = df[df['datetime'] <= end_date]
+                            end_dt = pd.to_datetime(end_date, utc=True)
+                            df = df[df['datetime'] <= end_dt]
                 
                 data = []
                 for idx, row in df.iterrows():
@@ -343,11 +345,13 @@ def run_backtest(symbol, timeframe):
                 # Apply date filtering if provided
                 if start_date or end_date:
                     if 'Local time' in df.columns:
-                        df['datetime'] = pd.to_datetime(df['Local time'])
+                        df['datetime'] = pd.to_datetime(df['Local time'], utc=True)
                         if start_date:
-                            df = df[df['datetime'] >= start_date]
+                            start_dt = pd.to_datetime(start_date, utc=True)
+                            df = df[df['datetime'] >= start_dt]
                         if end_date:
-                            df = df[df['datetime'] <= end_date]
+                            end_dt = pd.to_datetime(end_date, utc=True)
+                            df = df[df['datetime'] <= end_dt]
                 
                 # Calculate backtest metrics for the filtered data
                 metrics = calculate_metrics(df)
