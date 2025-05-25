@@ -19,38 +19,18 @@ class StrategyTester:
     
     def load_market_data(self, symbol: str, timeframe: str) -> pd.DataFrame:
         """
-        Load market data for backtesting with enhanced error handling
+        Load market data for backtesting
         """
-        try:
-            filename = f"{symbol}_Candlestick_{timeframe}_BID_26.04.2023-26.04.2025.csv"
-            filepath = os.path.join(self.data_dir, filename)
-            
-            if not os.path.exists(filepath):
-                raise FileNotFoundError(f"Data file not found: {filename}")
-            
-            df = pd.read_csv(filepath)
-            
-            # Validate required columns
-            required_cols = ['Local time', 'Open', 'High', 'Low', 'Close']
-            missing_cols = [col for col in required_cols if col not in df.columns]
-            if missing_cols:
-                raise ValueError(f"Missing required columns: {missing_cols}")
-            
-            # Handle timezone-aware datetime conversion
-            df['Local time'] = pd.to_datetime(df['Local time'], utc=True)
-            df = df.sort_values('Local time')
-            
-            # Remove any duplicate timestamps
-            df = df.drop_duplicates(subset=['Local time'])
-            
-            if len(df) < 2:
-                raise ValueError("Insufficient data points for analysis")
-                
-            return df
-            
-        except Exception as e:
-            logger.error(f"Error loading market data: {str(e)}")
-            raise
+        filename = f"{symbol}_Candlestick_{timeframe}_BID_26.04.2023-26.04.2025.csv"
+        filepath = os.path.join(self.data_dir, filename)
+        
+        if not os.path.exists(filepath):
+            raise FileNotFoundError(f"Data file not found: {filename}")
+        
+        df = pd.read_csv(filepath)
+        df['Local time'] = pd.to_datetime(df['Local time'])
+        df = df.sort_values('Local time')
+        return df
     
     def run_backtest(self, strategy: BaseStrategy, symbol: str, timeframe: str, 
                      start_date: str = None, end_date: str = None) -> Dict:

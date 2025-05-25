@@ -113,9 +113,9 @@ def calculate_metrics(df: pd.DataFrame) -> dict:
         
         # Calculate max drawdown
         cumulative_pnl = df['pnl'].cumsum()
-        running_peak = cumulative_pnl.expanding().max()
-        drawdown_pct = ((running_peak - cumulative_pnl) / running_peak * 100)
-        max_drawdown = float(drawdown_pct.max()) if not drawdown_pct.empty else 0
+        peak = cumulative_pnl.expanding().max()
+        drawdown = peak - cumulative_pnl
+        max_drawdown = float(drawdown.max()) if not drawdown.empty else 0
         
         return {
             "net_profit": net_profit,
