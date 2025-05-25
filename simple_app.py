@@ -237,6 +237,9 @@ def rsi_strategy(df: pd.DataFrame, period=14, oversold=30, overbought=70):
     period = 14
     oversold = 30
     overbought = 70
+    
+    # Create proper copy to avoid pandas warnings and embedded page errors
+    df = df.copy()
     df['RSI'] = calculate_rsi(df, period)
     
     signals = []
@@ -301,6 +304,9 @@ def bollinger_strategy(df: pd.DataFrame, period=20, std_dev=2):
     # Strategy parameters embedded here
     period = 20
     std_dev = 2
+    
+    # Create proper copy to avoid pandas warnings and embedded page errors
+    df = df.copy()
     upper, middle, lower = calculate_bollinger_bands(df, period, std_dev)
     df['BB_Upper'] = upper
     df['BB_Middle'] = middle
