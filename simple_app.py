@@ -1658,8 +1658,12 @@ def run_backtest():
             }
             total_pnl = run_realistic_backtest_engine(strategy_result, starting_capital, user_params)
             current_balance = starting_capital + total_pnl
+            
+            # Get actual number of executed trades from strategy result
+            actual_trades_count = len(strategy_result.get('trades', []))
         else:
             total_pnl = 0
+            actual_trades_count = 0
         
         # Check account health with protective warnings
         health_check = check_account_health(current_balance, starting_capital)
@@ -1667,9 +1671,9 @@ def run_backtest():
         return jsonify({
             'status': 'success',
             'total_pnl': total_pnl,
-            'signals_count': signals_count,
-            'win_rate': calculate_real_win_rate(strategy_result) if signals_count > 0 else 0,
-            'max_drawdown': calculate_real_max_drawdown(strategy_result, starting_capital) if signals_count > 0 else 0,
+            'signals_count': actual_trades_count,
+            'win_rate': calculate_real_win_rate(strategy_result) if actual_trades_count > 0 else 0,
+            'max_drawdown': calculate_real_max_drawdown(strategy_result, starting_capital) if actual_trades_count > 0 else 0,
             'data_points': len(df),
             'date_range': f"{df['datetime'].min()} to {df['datetime'].max()}" if len(df) > 0 else "No data",
             'risk_management': {
