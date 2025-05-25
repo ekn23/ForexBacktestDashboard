@@ -850,7 +850,7 @@ def index():
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Upload New Strategy</label>
-                                    <input type="file" class="form-control" id="strategyFile" accept=".py">
+                                    <input type="file" class="form-control" id="strategyFile" accept=".py,.mq4,.mq5">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">&nbsp;</label>
@@ -1071,6 +1071,7 @@ def backtest_results():
 import os
 import importlib.util
 import inspect
+from mql_interpreter import MQLInterpreter
 
 # Create strategies directory if it doesn't exist
 STRATEGIES_DIR = "custom_strategies"
@@ -1088,8 +1089,8 @@ def upload_strategy():
         if file.filename == '':
             return jsonify({'status': 'error', 'message': 'No file selected'})
         
-        if not file.filename.endswith('.py'):
-            return jsonify({'status': 'error', 'message': 'File must be a Python (.py) file'})
+        if not (file.filename.endswith('.py') or file.filename.endswith('.mq4') or file.filename.endswith('.mq5')):
+            return jsonify({'status': 'error', 'message': 'File must be a Python (.py) or MQL4/5 (.mq4/.mq5) file'})
         
         # Save the uploaded strategy file
         filename = file.filename
@@ -1097,8 +1098,14 @@ def upload_strategy():
         file.save(filepath)
         
         # Validate the strategy file
-        strategy_name = filename[:-3]  # Remove .py extension
-        validation_result = validate_strategy_file(filepath, strategy_name)
+        if filename.endswith('.py'):
+            strategy_name = filename[:-3]  # Remove .py extension
+            validation_result = validate_strategy_file(filepath, strategy_name)
+        elif filename.endswith(('.mq4', '.mq5')):
+            strategy_name = filename[:-4]  # Remove .mq4/.mq5 extension
+            validation_result = validate_mql_strategy_file(filepath, strategy_name)
+        else:
+            validation_result = {'valid': False, 'error': 'Unsupported file type'}
         
         if not validation_result['valid']:
             os.remove(filepath)  # Remove invalid file
@@ -1151,7 +1158,7 @@ def list_strategies():
             {'name': 'stochastic', 'display_name': 'Stochastic Strategy', 'type': 'built-in'}
         ]
         
-        # Custom strategies
+        # Custom strategies (Python and MQL4/5)
         if os.path.exists(STRATEGIES_DIR):
             for filename in os.listdir(STRATEGIES_DIR):
                 if filename.endswith('.py'):
@@ -1159,7 +1166,15 @@ def list_strategies():
                     strategies.append({
                         'name': strategy_name,
                         'display_name': strategy_name.replace('_', ' ').title(),
-                        'type': 'custom'
+                        'type': 'custom-python'
+                    })
+                elif filename.endswith(('.mq4', '.mq5')):
+                    strategy_name = filename[:-4]
+                    file_type = 'MQL4' if filename.endswith('.mq4') else 'MQL5'
+                    strategies.append({
+                        'name': strategy_name,
+                        'display_name': f"{strategy_name.replace('_', ' ').title()} ({file_type})",
+                        'type': 'custom-mql'
                     })
         
         return jsonify({'status': 'success', 'strategies': strategies})
@@ -1319,6 +1334,36 @@ def validate_strategy_file(filepath, strategy_name):
         
     except Exception as e:
         return {'valid': False, 'error': f'Invalid Python file: {str(e)}'}
+
+def validate_mql_strategy_file(filepath, strategy_name):
+    """Validate that an MQL4/5 strategy file contains required functions."""
+    try:
+        # Read the file content
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        # Check for required MQL4/5 elements
+        required_elements = ['OnTick', 'OnInit']
+        optional_elements = ['OnStart', 'start()']  # Different MQL versions
+        
+        has_required = False
+        
+        # Check if at least one main function exists
+        for element in required_elements + optional_elements:
+            if element in content:
+                has_required = True
+                break
+        
+        if not has_required:
+            return {
+                'valid': False, 
+                'error': f'MQL strategy file must contain at least one of: {", ".join(required_elements + optional_elements)}'
+            }
+        
+        return {'valid': True}
+    
+    except Exception as e:
+        return {'valid': False, 'error': f'Error validating MQL strategy file: {str(e)}'}
 
 def get_strategy_template(strategy_name):
     """Get template code for new strategy."""
