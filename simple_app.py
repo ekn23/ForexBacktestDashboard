@@ -1048,7 +1048,8 @@ def index():
                             }
                         }
                         
-                        alert(alertMessage);
+                        // Results updated in dashboard - no popup needed
+                        console.log('Backtest completed successfully');
                     } else {
                         // Silent error handling - no popup messages
                         console.log('Strategy completed');
