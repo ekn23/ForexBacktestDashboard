@@ -538,20 +538,24 @@ def calculate_stop_loss(entry_price, sl_type, sl_value, atr_value, direction):
         return entry_price - (atr_value * 2)  # Default 2 ATR
 
 def calculate_take_profit(entry_price, tp_type, tp_value, stop_loss, direction):
-    """Calculate take profit based on type and parameters."""
+    """Calculate take profit based on type and parameters with proper risk management."""
     if tp_type == 'fixed':
         pips_value = tp_value * 0.0001  # Convert pips to price
         return entry_price + pips_value if direction == 'BUY' else entry_price - pips_value
     elif tp_type == 'ratio':
         risk_distance = abs(entry_price - stop_loss)
-        reward_distance = risk_distance * tp_value
+        if risk_distance == 0:  # Prevent division by zero
+            risk_distance = entry_price * 0.001  # Default 10 pip risk
+        reward_distance = risk_distance * float(tp_value)  # Ensure proper float conversion
         return entry_price + reward_distance if direction == 'BUY' else entry_price - reward_distance
     elif tp_type == 'percentage':
-        percentage_distance = entry_price * (tp_value / 100)
+        percentage_distance = entry_price * (float(tp_value) / 100)
         return entry_price + percentage_distance if direction == 'BUY' else entry_price - percentage_distance
-    else:
+    else:  # Default to 1:2 risk:reward if type not recognized
         risk_distance = abs(entry_price - stop_loss)
-        return entry_price + (risk_distance * 1.5) if direction == 'BUY' else entry_price - (risk_distance * 1.5)
+        if risk_distance == 0:
+            risk_distance = entry_price * 0.001
+        return entry_price + (risk_distance * 2) if direction == 'BUY' else entry_price - (risk_distance * 2)
 
 def apply_trailing_stop(current_price, entry_price, current_sl, trail_type, trail_distance, atr_value, direction):
     """Apply trailing stop logic."""
