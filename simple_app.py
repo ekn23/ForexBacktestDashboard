@@ -280,7 +280,7 @@ def rsi_strategy(df: pd.DataFrame, period=14, oversold=30, overbought=70):
                     'entry_price': position['entry_price'],
                     'exit_price': current_row['Close'],
                     'type': position['type'],
-                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                    'pnl': ('current_row['Close'] - position['entry_price']) * 10000'
                 }
                 trades.append(trade)
                 position = None
@@ -358,7 +358,19 @@ def bollinger_strategy(df: pd.DataFrame, period=20, std_dev=2):
     }
 
 def macd_strategy(df: pd.DataFrame, fast=12, slow=26, signal=9):
-    """MACD strategy."""
+    """
+    MACD strategy with embedded parameters.
+    
+    Strategy Parameters (configurable within this function):
+    - fast: 12 (Fast EMA period)
+    - slow: 26 (Slow EMA period)
+    - signal: 9 (Signal line period)
+    """
+    # Strategy parameters embedded here
+    fast = 12
+    slow = 26
+    signal = 9
+    
     macd_line, signal_line, histogram = calculate_macd(df, fast, slow, signal)
     df['MACD'] = macd_line
     df['MACD_Signal'] = signal_line
@@ -412,7 +424,7 @@ def macd_strategy(df: pd.DataFrame, fast=12, slow=26, signal=9):
                     'entry_price': position['entry_price'],
                     'exit_price': current_row['Close'],
                     'type': position['type'],
-                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                    'pnl': (current_row['Close'] - position['entry_price']) * 10000
                 }
                 trades.append(trade)
                 position = None
@@ -423,7 +435,20 @@ def macd_strategy(df: pd.DataFrame, fast=12, slow=26, signal=9):
     }
 
 def stochastic_strategy(df: pd.DataFrame, k_period=14, d_period=3, oversold=20, overbought=80):
-    """Stochastic Oscillator strategy."""
+    """
+    Stochastic Oscillator strategy with embedded parameters.
+    
+    Strategy Parameters (configurable within this function):
+    - k_period: 14 (Stochastic %K period)
+    - d_period: 3 (Stochastic %D period)
+    - oversold: 20 (Oversold threshold)
+    - overbought: 80 (Overbought threshold)
+    """
+    # Strategy parameters embedded here
+    k_period = 14
+    d_period = 3
+    oversold = 20
+    overbought = 80
     k_percent, d_percent = calculate_stochastic(df, k_period, d_period)
     df['Stoch_K'] = k_percent
     df['Stoch_D'] = d_percent
@@ -469,7 +494,7 @@ def stochastic_strategy(df: pd.DataFrame, k_period=14, d_period=3, oversold=20, 
                     'entry_price': position['entry_price'],
                     'exit_price': current_row['Close'],
                     'type': position['type'],
-                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                    'pnl': ('current_row['Close'] - position['entry_price']) * 10000'
                 }
                 trades.append(trade)
                 position = None
