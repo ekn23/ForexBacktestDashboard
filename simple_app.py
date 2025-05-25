@@ -622,7 +622,7 @@ def run_realistic_backtest_engine(strategy_result, starting_capital, user_params
         lot_size = trade.get('lot_size', 0.05)  # Start at 0.05 lots
         entry_price = trade['entry_price']
         exit_price = trade['exit_price']
-        direction = trade['direction']
+        direction = trade.get('type', 'BUY')  # Use 'type' field or default to 'BUY'
         
         # Calculate raw pip profit/loss
         if direction == 'BUY':
