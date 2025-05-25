@@ -105,6 +105,9 @@ def index():
                                 <div class="col-md-3">
                                     <button class="btn btn-primary mt-4" onclick="runBacktest()">Run Backtest</button>
                                 </div>
+                                <div class="col-md-3">
+                                    <button class="btn btn-secondary mt-4" onclick="resetToZero()">Reset to Zero</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -195,9 +198,6 @@ def index():
                     button.disabled = false;
                     
                     alert(`Single trade completed: ${isWin ? 'WIN' : 'LOSS'} $${singleTradeProfit} (${startDate} to ${endDate})`);
-                    
-                    // Auto-reset to zero baselines after 5 seconds
-                    setTimeout(resetToZero, 5000);
                 }, 2000);
             }
             
