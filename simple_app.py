@@ -245,8 +245,8 @@ def run_realistic_backtest_engine(strategy_result, starting_capital, user_params
         wins = int(signals_in_period * win_rate)
         losses = signals_in_period - wins
         
-        # Calculate with 0.05 lot minimum
-        lot_size = 0.05
+        # Use user's configurable lot size
+        lot_size = user_lot_size
         
         # Apply realistic costs to each trade
         cost_per_trade = (spread_cost_per_lot + slippage_per_lot) * lot_size
@@ -686,13 +686,20 @@ def run_backtest():
         # Calculate professional metrics with risk management
         signals_count = len(strategy_result['signals'])
         
-        # Professional position sizing and profit calculation
-        starting_capital = 400
+        # Use user's configurable trading parameters
         current_balance = starting_capital
         
         if signals_count > 0:
-            # Enhanced realistic backtest engine
-            total_pnl = run_realistic_backtest_engine(strategy_result, starting_capital)
+            # Enhanced realistic backtest engine with user parameters
+            user_params = {
+                'starting_capital': starting_capital,
+                'lot_size': lot_size,
+                'spread_pips': spread_pips,
+                'slippage_pips': slippage_pips,
+                'risk_percent': risk_percent,
+                'leverage': leverage
+            }
+            total_pnl = run_realistic_backtest_engine(strategy_result, starting_capital, user_params)
             current_balance = starting_capital + total_pnl
         else:
             total_pnl = 0
