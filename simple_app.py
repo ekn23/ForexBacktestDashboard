@@ -149,6 +149,7 @@ def simple_ma_strategy(df: pd.DataFrame, fast_period=10, slow_period=20):
         'signals': signals
     }
 
+# Complete Technical Indicators Library
 def calculate_atr(df: pd.DataFrame, period=14):
     """Calculate Average True Range for professional volatility measurement."""
     high_low = df['High'] - df['Low']
@@ -157,6 +158,353 @@ def calculate_atr(df: pd.DataFrame, period=14):
     
     true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
     return true_range.rolling(window=period).mean()
+
+def calculate_rsi(df: pd.DataFrame, period=14):
+    """Calculate Relative Strength Index."""
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
+    rs = gain / loss
+    return 100 - (100 / (1 + rs))
+
+def calculate_macd(df: pd.DataFrame, fast=12, slow=26, signal=9):
+    """Calculate MACD (Moving Average Convergence Divergence)."""
+    exp1 = df['Close'].ewm(span=fast).mean()
+    exp2 = df['Close'].ewm(span=slow).mean()
+    macd_line = exp1 - exp2
+    signal_line = macd_line.ewm(span=signal).mean()
+    histogram = macd_line - signal_line
+    return macd_line, signal_line, histogram
+
+def calculate_bollinger_bands(df: pd.DataFrame, period=20, std_dev=2):
+    """Calculate Bollinger Bands."""
+    sma = df['Close'].rolling(window=period).mean()
+    std = df['Close'].rolling(window=period).std()
+    upper_band = sma + (std * std_dev)
+    lower_band = sma - (std * std_dev)
+    return upper_band, sma, lower_band
+
+def calculate_stochastic(df: pd.DataFrame, k_period=14, d_period=3):
+    """Calculate Stochastic Oscillator."""
+    low_min = df['Low'].rolling(window=k_period).min()
+    high_max = df['High'].rolling(window=k_period).max()
+    k_percent = 100 * ((df['Close'] - low_min) / (high_max - low_min))
+    d_percent = k_percent.rolling(window=d_period).mean()
+    return k_percent, d_percent
+
+# Advanced Strategy Selection Engine
+def run_selected_strategy(df: pd.DataFrame, strategy_params):
+    """Run the selected strategy with user parameters."""
+    strategy_type = strategy_params.get('primary_strategy', 'ma_cross')
+    
+    if strategy_type == 'ma_cross':
+        return simple_ma_strategy(df, 
+                                strategy_params.get('fast_ma', 10), 
+                                strategy_params.get('slow_ma', 20))
+    elif strategy_type == 'rsi':
+        return rsi_strategy(df,
+                          strategy_params.get('rsi_period', 14),
+                          strategy_params.get('rsi_oversold', 30),
+                          strategy_params.get('rsi_overbought', 70))
+    elif strategy_type == 'bollinger':
+        return bollinger_strategy(df, 20, 2)
+    elif strategy_type == 'macd':
+        return macd_strategy(df, 12, 26, 9)
+    elif strategy_type == 'stochastic':
+        return stochastic_strategy(df, 14, 3, 20, 80)
+    else:
+        return simple_ma_strategy(df, 10, 20)
+
+def rsi_strategy(df: pd.DataFrame, period=14, oversold=30, overbought=70):
+    """RSI-based trading strategy."""
+    df['RSI'] = calculate_rsi(df, period)
+    
+    signals = []
+    trades = []
+    position = None
+    
+    for i in range(period, len(df)):
+        current_row = df.iloc[i]
+        
+        # RSI oversold - BUY signal
+        if current_row['RSI'] < oversold and position is None:
+            signal = {
+                'datetime': current_row['datetime'],
+                'type': 'BUY',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal)
+            
+            position = {
+                'type': 'BUY',
+                'entry_price': current_row['Close'],
+                'entry_time': current_row['datetime'],
+                'entry_index': i
+            }
+        
+        # RSI overbought - SELL signal
+        elif current_row['RSI'] > overbought and position is not None:
+            signal = {
+                'datetime': current_row['datetime'],
+                'type': 'SELL',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal)
+            
+            if position:
+                trade = {
+                    'entry_time': position['entry_time'],
+                    'exit_time': current_row['datetime'],
+                    'entry_price': position['entry_price'],
+                    'exit_price': current_row['Close'],
+                    'type': position['type'],
+                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                }
+                trades.append(trade)
+                position = None
+    
+    return {
+        'trades': trades,
+        'signals': signals
+    }
+
+def bollinger_strategy(df: pd.DataFrame, period=20, std_dev=2):
+    """Bollinger Bands strategy."""
+    upper, middle, lower = calculate_bollinger_bands(df, period, std_dev)
+    df['BB_Upper'] = upper
+    df['BB_Middle'] = middle
+    df['BB_Lower'] = lower
+    
+    signals = []
+    trades = []
+    position = None
+    
+    for i in range(period, len(df)):
+        current_row = df.iloc[i]
+        
+        # Price touches lower band - BUY signal
+        if current_row['Close'] <= current_row['BB_Lower'] and position is None:
+            signal = {
+                'datetime': current_row['datetime'],
+                'type': 'BUY',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal)
+            
+            position = {
+                'type': 'BUY',
+                'entry_price': current_row['Close'],
+                'entry_time': current_row['datetime'],
+                'entry_index': i
+            }
+        
+        # Price touches upper band - SELL signal
+        elif current_row['Close'] >= current_row['BB_Upper'] and position is not None:
+            signal = {
+                'datetime': current_row['datetime'],
+                'type': 'SELL',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal)
+            
+            if position:
+                trade = {
+                    'entry_time': position['entry_time'],
+                    'exit_time': current_row['datetime'],
+                    'entry_price': position['entry_price'],
+                    'exit_price': current_row['Close'],
+                    'type': position['type'],
+                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                }
+                trades.append(trade)
+                position = None
+    
+    return {
+        'trades': trades,
+        'signals': signals
+    }
+
+def macd_strategy(df: pd.DataFrame, fast=12, slow=26, signal=9):
+    """MACD strategy."""
+    macd_line, signal_line, histogram = calculate_macd(df, fast, slow, signal)
+    df['MACD'] = macd_line
+    df['MACD_Signal'] = signal_line
+    df['MACD_Histogram'] = histogram
+    
+    signals = []
+    trades = []
+    position = None
+    
+    for i in range(slow, len(df)):
+        current_row = df.iloc[i]
+        prev_row = df.iloc[i-1]
+        
+        # MACD crosses above signal line - BUY signal
+        if (prev_row['MACD'] <= prev_row['MACD_Signal'] and 
+            current_row['MACD'] > current_row['MACD_Signal'] and 
+            position is None):
+            
+            signal_entry = {
+                'datetime': current_row['datetime'],
+                'type': 'BUY',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal_entry)
+            
+            position = {
+                'type': 'BUY',
+                'entry_price': current_row['Close'],
+                'entry_time': current_row['datetime'],
+                'entry_index': i
+            }
+        
+        # MACD crosses below signal line - SELL signal
+        elif (prev_row['MACD'] >= prev_row['MACD_Signal'] and 
+              current_row['MACD'] < current_row['MACD_Signal'] and 
+              position is not None):
+            
+            signal_entry = {
+                'datetime': current_row['datetime'],
+                'type': 'SELL',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal_entry)
+            
+            if position:
+                trade = {
+                    'entry_time': position['entry_time'],
+                    'exit_time': current_row['datetime'],
+                    'entry_price': position['entry_price'],
+                    'exit_price': current_row['Close'],
+                    'type': position['type'],
+                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                }
+                trades.append(trade)
+                position = None
+    
+    return {
+        'trades': trades,
+        'signals': signals
+    }
+
+def stochastic_strategy(df: pd.DataFrame, k_period=14, d_period=3, oversold=20, overbought=80):
+    """Stochastic Oscillator strategy."""
+    k_percent, d_percent = calculate_stochastic(df, k_period, d_period)
+    df['Stoch_K'] = k_percent
+    df['Stoch_D'] = d_percent
+    
+    signals = []
+    trades = []
+    position = None
+    
+    for i in range(k_period, len(df)):
+        current_row = df.iloc[i]
+        
+        # Stochastic oversold - BUY signal
+        if current_row['Stoch_K'] < oversold and position is None:
+            signal = {
+                'datetime': current_row['datetime'],
+                'type': 'BUY',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal)
+            
+            position = {
+                'type': 'BUY',
+                'entry_price': current_row['Close'],
+                'entry_time': current_row['datetime'],
+                'entry_index': i
+            }
+        
+        # Stochastic overbought - SELL signal
+        elif current_row['Stoch_K'] > overbought and position is not None:
+            signal = {
+                'datetime': current_row['datetime'],
+                'type': 'SELL',
+                'price': current_row['Close'],
+                'index': i
+            }
+            signals.append(signal)
+            
+            if position:
+                trade = {
+                    'entry_time': position['entry_time'],
+                    'exit_time': current_row['datetime'],
+                    'entry_price': position['entry_price'],
+                    'exit_price': current_row['Close'],
+                    'type': position['type'],
+                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                }
+                trades.append(trade)
+                position = None
+    
+    return {
+        'trades': trades,
+        'signals': signals
+    }
+
+# Advanced Stop Loss & Take Profit Engine
+def calculate_stop_loss(entry_price, sl_type, sl_value, atr_value, direction):
+    """Calculate stop loss based on type and parameters."""
+    if sl_type == 'fixed':
+        pips_value = sl_value * 0.0001  # Convert pips to price
+        return entry_price - pips_value if direction == 'BUY' else entry_price + pips_value
+    elif sl_type == 'atr':
+        atr_distance = atr_value * sl_value
+        return entry_price - atr_distance if direction == 'BUY' else entry_price + atr_distance
+    elif sl_type == 'percentage':
+        percentage_distance = entry_price * (sl_value / 100)
+        return entry_price - percentage_distance if direction == 'BUY' else entry_price + percentage_distance
+    else:
+        return entry_price - (atr_value * 2)  # Default 2 ATR
+
+def calculate_take_profit(entry_price, tp_type, tp_value, stop_loss, direction):
+    """Calculate take profit based on type and parameters."""
+    if tp_type == 'fixed':
+        pips_value = tp_value * 0.0001  # Convert pips to price
+        return entry_price + pips_value if direction == 'BUY' else entry_price - pips_value
+    elif tp_type == 'ratio':
+        risk_distance = abs(entry_price - stop_loss)
+        reward_distance = risk_distance * tp_value
+        return entry_price + reward_distance if direction == 'BUY' else entry_price - reward_distance
+    elif tp_type == 'percentage':
+        percentage_distance = entry_price * (tp_value / 100)
+        return entry_price + percentage_distance if direction == 'BUY' else entry_price - percentage_distance
+    else:
+        risk_distance = abs(entry_price - stop_loss)
+        return entry_price + (risk_distance * 1.5) if direction == 'BUY' else entry_price - (risk_distance * 1.5)
+
+def apply_trailing_stop(current_price, entry_price, current_sl, trail_type, trail_distance, atr_value, direction):
+    """Apply trailing stop logic."""
+    if trail_type == 'none':
+        return current_sl
+    
+    if trail_type == 'fixed':
+        pips_value = trail_distance * 0.0001
+        if direction == 'BUY':
+            new_sl = current_price - pips_value
+            return max(current_sl, new_sl)
+        else:
+            new_sl = current_price + pips_value
+            return min(current_sl, new_sl)
+    
+    elif trail_type == 'atr':
+        atr_distance = atr_value * (trail_distance / 10)  # Scale trail_distance
+        if direction == 'BUY':
+            new_sl = current_price - atr_distance
+            return max(current_sl, new_sl)
+        else:
+            new_sl = current_price + atr_distance
+            return min(current_sl, new_sl)
+    
+    return current_sl
 
 def calculate_professional_pnl(position, exit_price):
     """Calculate P&L with OANDA-compliant rules."""
@@ -437,6 +785,90 @@ def index():
                                     <input type="number" class="form-control" id="leverage" value="50" min="1" max="500">
                                 </div>
                             </div>
+                            
+                            <!-- Advanced Stop Loss & Take Profit Controls -->
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <h6 class="text-warning">Stop Loss & Take Profit Settings</h6>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-2">
+                                    <label class="form-label">Stop Loss Type</label>
+                                    <select class="form-select" id="stopLossType">
+                                        <option value="fixed">Fixed Pips</option>
+                                        <option value="atr" selected>ATR-Based</option>
+                                        <option value="percentage">Percentage</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Stop Loss Value</label>
+                                    <input type="number" class="form-control" id="stopLossValue" value="2.0" min="0.1" max="10" step="0.1">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Take Profit Type</label>
+                                    <select class="form-select" id="takeProfitType">
+                                        <option value="fixed">Fixed Pips</option>
+                                        <option value="ratio" selected>Risk:Reward Ratio</option>
+                                        <option value="percentage">Percentage</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Take Profit Value</label>
+                                    <input type="number" class="form-control" id="takeProfitValue" value="1.5" min="0.5" max="5" step="0.1">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Trailing Stop</label>
+                                    <select class="form-select" id="trailingStop">
+                                        <option value="none" selected>None</option>
+                                        <option value="fixed">Fixed Pips</option>
+                                        <option value="atr">ATR-Based</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Trailing Distance</label>
+                                    <input type="number" class="form-control" id="trailingDistance" value="15" min="5" max="100" step="1">
+                                </div>
+                            </div>
+                            
+                            <!-- Technical Indicators Selection -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <h6 class="text-success">Technical Indicators</h6>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-3">
+                                    <label class="form-label">Primary Strategy</label>
+                                    <select class="form-select" id="primaryStrategy">
+                                        <option value="ma_cross" selected>Moving Average Crossover</option>
+                                        <option value="rsi">RSI Strategy</option>
+                                        <option value="bollinger">Bollinger Bands</option>
+                                        <option value="macd">MACD Strategy</option>
+                                        <option value="stochastic">Stochastic Strategy</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Fast MA Period</label>
+                                    <input type="number" class="form-control" id="fastMA" value="10" min="2" max="50">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Slow MA Period</label>
+                                    <input type="number" class="form-control" id="slowMA" value="20" min="5" max="200">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">RSI Period</label>
+                                    <input type="number" class="form-control" id="rsiPeriod" value="14" min="2" max="50">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">RSI Oversold</label>
+                                    <input type="number" class="form-control" id="rsiOversold" value="30" min="10" max="40">
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">RSI Overbought</label>
+                                    <input type="number" class="form-control" id="rsiOverbought" value="70" min="60" max="90">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -512,7 +944,19 @@ def index():
                         spread_pips: parseFloat(document.getElementById('spreadPips').value) || 2.0,
                         slippage_pips: parseFloat(document.getElementById('slippagePips').value) || 1.5,
                         risk_percent: parseFloat(document.getElementById('riskPercent').value) || 2.0,
-                        leverage: parseFloat(document.getElementById('leverage').value) || 50
+                        leverage: parseFloat(document.getElementById('leverage').value) || 50,
+                        stop_loss_type: document.getElementById('stopLossType').value,
+                        stop_loss_value: parseFloat(document.getElementById('stopLossValue').value) || 2.0,
+                        take_profit_type: document.getElementById('takeProfitType').value,
+                        take_profit_value: parseFloat(document.getElementById('takeProfitValue').value) || 1.5,
+                        trailing_stop: document.getElementById('trailingStop').value,
+                        trailing_distance: parseFloat(document.getElementById('trailingDistance').value) || 15,
+                        primary_strategy: document.getElementById('primaryStrategy').value,
+                        fast_ma: parseInt(document.getElementById('fastMA').value) || 10,
+                        slow_ma: parseInt(document.getElementById('slowMA').value) || 20,
+                        rsi_period: parseInt(document.getElementById('rsiPeriod').value) || 14,
+                        rsi_oversold: parseInt(document.getElementById('rsiOversold').value) || 30,
+                        rsi_overbought: parseInt(document.getElementById('rsiOverbought').value) || 70
                     })
                 })
                 .then(response => response.json())
@@ -680,8 +1124,18 @@ def run_backtest():
                 print(f"Date filtering failed: {e}")
                 pass  # Use full dataset if date filtering fails
         
-        # Run moving average strategy on your filtered real data
-        strategy_result = simple_ma_strategy(df)
+        # Extract strategy parameters from request
+        strategy_params = {
+            'primary_strategy': request.json.get('primary_strategy', 'ma_cross'),
+            'fast_ma': request.json.get('fast_ma', 10),
+            'slow_ma': request.json.get('slow_ma', 20),
+            'rsi_period': request.json.get('rsi_period', 14),
+            'rsi_oversold': request.json.get('rsi_oversold', 30),
+            'rsi_overbought': request.json.get('rsi_overbought', 70)
+        }
+        
+        # Run selected strategy with user parameters
+        strategy_result = run_selected_strategy(df, strategy_params)
         
         # Calculate professional metrics with risk management
         signals_count = len(strategy_result['signals'])
@@ -697,7 +1151,13 @@ def run_backtest():
                 'spread_pips': spread_pips,
                 'slippage_pips': slippage_pips,
                 'risk_percent': risk_percent,
-                'leverage': leverage
+                'leverage': leverage,
+                'stop_loss_type': request.json.get('stop_loss_type', 'atr'),
+                'stop_loss_value': request.json.get('stop_loss_value', 2.0),
+                'take_profit_type': request.json.get('take_profit_type', 'ratio'),
+                'take_profit_value': request.json.get('take_profit_value', 1.5),
+                'trailing_stop': request.json.get('trailing_stop', 'none'),
+                'trailing_distance': request.json.get('trailing_distance', 15)
             }
             total_pnl = run_realistic_backtest_engine(strategy_result, starting_capital, user_params)
             current_balance = starting_capital + total_pnl
