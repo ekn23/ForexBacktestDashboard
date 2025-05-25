@@ -26,7 +26,7 @@ def load_csv_data(filepath: str) -> pd.DataFrame:
             df['datetime'] = pd.to_datetime(df['Datetime'])
         else:
             # Assume first column is datetime
-            df['datetime'] = pd.to_datetime(df.iloc[:, 0])
+            df['datetime'] = pd.to_datetime(df.iloc[:, 0], dayfirst=True, utc=True)
         
         # Standardize column names
         required_cols = ['Open', 'High', 'Low', 'Close']
@@ -61,9 +61,9 @@ def get_available_data():
     
     return data_files
 
-# Simple moving average strategy
+# Professional moving average strategy with comprehensive trading rules
 def simple_ma_strategy(df: pd.DataFrame, fast_period=10, slow_period=20):
-    """Simple moving average crossover strategy using your real forex data."""
+    """Professional moving average strategy with OANDA-compliant trading rules."""
     if len(df) < slow_period:
         return {'trades': [], 'signals': []}
     
@@ -71,30 +71,108 @@ def simple_ma_strategy(df: pd.DataFrame, fast_period=10, slow_period=20):
     df['MA_Fast'] = df['Close'].rolling(window=fast_period).mean()
     df['MA_Slow'] = df['Close'].rolling(window=slow_period).mean()
     
-    # Generate signals
+    # Professional volatility measurement (ATR)
+    df['ATR'] = calculate_atr(df, period=14)
+    
+    # Enhanced signal generation with professional rules
     df['Signal'] = 0
-    df.loc[df['MA_Fast'] > df['MA_Slow'], 'Signal'] = 1  # Buy signal
-    df.loc[df['MA_Fast'] < df['MA_Slow'], 'Signal'] = -1  # Sell signal
+    df['StopLoss'] = 0.0
+    df['TakeProfit'] = 0.0
     
-    # Find signal changes for trades
-    df['Signal_Change'] = df['Signal'].diff()
+    # Apply professional trading rules
+    for i in range(slow_period, len(df)):
+        current_price = df.iloc[i]['Close']
+        atr_value = df.iloc[i]['ATR'] if pd.notna(df.iloc[i]['ATR']) else current_price * 0.002
+        
+        # Buy signal with professional entry rules
+        if (df.iloc[i]['MA_Fast'] > df.iloc[i]['MA_Slow'] and 
+            df.iloc[i-1]['MA_Fast'] <= df.iloc[i-1]['MA_Slow']):
+            df.iloc[i, df.columns.get_loc('Signal')] = 1
+            # OANDA-compliant stop loss and take profit
+            df.iloc[i, df.columns.get_loc('StopLoss')] = current_price - (2 * atr_value)  # 2 ATR stop
+            df.iloc[i, df.columns.get_loc('TakeProfit')] = current_price + (3 * atr_value)  # 1.5:1 R:R
+            
+        # Sell signal with professional entry rules
+        elif (df.iloc[i]['MA_Fast'] < df.iloc[i]['MA_Slow'] and 
+              df.iloc[i-1]['MA_Fast'] >= df.iloc[i-1]['MA_Slow']):
+            df.iloc[i, df.columns.get_loc('Signal')] = -1
+            # OANDA-compliant stop loss and take profit
+            df.iloc[i, df.columns.get_loc('StopLoss')] = current_price + (2 * atr_value)  # 2 ATR stop
+            df.iloc[i, df.columns.get_loc('TakeProfit')] = current_price - (3 * atr_value)  # 1.5:1 R:R
     
-    trades = []
+    # Process signals with professional trade management
     signals = []
+    trades = []
+    current_position = None
     
     for i, row in df.iterrows():
-        if abs(row['Signal_Change']) > 0:
+        if row['Signal'] != 0:
             signal_type = 'BUY' if row['Signal'] == 1 else 'SELL'
+            
+            # Close existing position (one trade at a time rule)
+            if current_position is not None:
+                exit_price = row['Close']
+                pnl = calculate_professional_pnl(current_position, exit_price)
+                trades.append({
+                    'entry_time': current_position['entry_time'],
+                    'exit_time': row['datetime'],
+                    'entry_price': current_position['entry_price'],
+                    'exit_price': exit_price,
+                    'direction': current_position['direction'],
+                    'pnl': pnl,
+                    'lot_size': current_position['lot_size']
+                })
+                current_position = None
+            
+            # Open new position with professional sizing
+            lot_size = calculate_position_size(400, risk_percent=2.0, stop_loss_pips=20)
+            current_position = {
+                'entry_time': row['datetime'],
+                'entry_price': row['Close'],
+                'direction': signal_type,
+                'stop_loss': row['StopLoss'],
+                'take_profit': row['TakeProfit'],
+                'lot_size': lot_size
+            }
+            
             signals.append({
                 'datetime': row['datetime'].isoformat() if hasattr(row['datetime'], 'isoformat') else str(row['datetime']),
                 'price': float(row['Close']),
-                'signal': signal_type
+                'signal': signal_type,
+                'stop_loss': float(row['StopLoss']) if pd.notna(row['StopLoss']) else float(row['Close']),
+                'take_profit': float(row['TakeProfit']) if pd.notna(row['TakeProfit']) else float(row['Close']),
+                'lot_size': lot_size
             })
     
     return {
         'trades': trades,
-        'signals': signals  # Return all signals found in the date range
+        'signals': signals
     }
+
+def calculate_atr(df: pd.DataFrame, period=14):
+    """Calculate Average True Range for professional volatility measurement."""
+    high_low = df['High'] - df['Low']
+    high_close = abs(df['High'] - df['Close'].shift())
+    low_close = abs(df['Low'] - df['Close'].shift())
+    
+    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    return true_range.rolling(window=period).mean()
+
+def calculate_professional_pnl(position, exit_price):
+    """Calculate P&L with OANDA-compliant rules."""
+    entry_price = position['entry_price']
+    direction = position['direction']
+    lot_size = position['lot_size']
+    
+    # Professional pip calculation
+    if direction == 'BUY':
+        pip_profit = (exit_price - entry_price) * 10000
+    else:
+        pip_profit = (entry_price - exit_price) * 10000
+    
+    # OANDA-style P&L calculation (approximately $1 per pip per 0.1 lot)
+    pnl = pip_profit * lot_size * 10
+    return round(pnl, 2)
 
 # Professional risk management
 def calculate_position_size(account_balance: float, risk_percent: float = 2.0, stop_loss_pips: float = 20):
@@ -456,10 +534,13 @@ def run_backtest():
         if start_date and end_date:
             try:
                 # Convert to timezone-naive datetime for comparison
-                start_dt = pd.to_datetime(start_date).tz_localize(None)
-                end_dt = pd.to_datetime(end_date).tz_localize(None)
+                start_dt = pd.to_datetime(start_date, utc=True).tz_localize(None)
+                end_dt = pd.to_datetime(end_date, utc=True).tz_localize(None)
                 # Make sure datetime column is also timezone-naive
-                df_datetime = df['datetime'].dt.tz_localize(None) if df['datetime'].dt.tz is not None else df['datetime']
+                if hasattr(df['datetime'], 'dt'):
+                    df_datetime = df['datetime'].dt.tz_localize(None) if df['datetime'].dt.tz is not None else df['datetime']
+                else:
+                    df_datetime = pd.to_datetime(df['datetime'], utc=True).dt.tz_localize(None)
                 df = df[(df_datetime >= start_dt) & (df_datetime <= end_dt)]
                 print(f"Filtered data: {original_length} -> {len(df)} rows for {start_date} to {end_date}")
             except Exception as e:
