@@ -165,29 +165,57 @@ def index():
                 button.textContent = 'Running Backtest...';
                 button.disabled = true;
                 
-                // Simulate backtest with calendar dates
+                // Simulate single trade backtest with calendar dates
                 setTimeout(() => {
-                    // Update metrics with test results
-                    document.querySelector('.col-md-3:nth-child(1) h3').textContent = '$1,250.75';
-                    document.querySelector('.col-md-3:nth-child(1) h3').className = 'text-success';
+                    // Single trade result - realistic forex testing
+                    const singleTradeProfit = Math.random() > 0.6 ? 
+                        (Math.random() * 200 + 50).toFixed(2) : 
+                        -(Math.random() * 150 + 30).toFixed(2);
                     
-                    document.querySelector('.col-md-3:nth-child(2) h3').textContent = '23';
-                    document.querySelector('.col-md-3:nth-child(3) h3').textContent = '65.2%';
-                    document.querySelector('.col-md-3:nth-child(4) h3').textContent = '8.5%';
+                    const isWin = parseFloat(singleTradeProfit) > 0;
                     
-                    // Update chart with sample data
-                    chart.data.labels = ['Start', 'Week 1', 'Week 2', 'Week 3', 'Week 4'];
-                    chart.data.datasets[0].data = [10000, 10200, 10150, 10800, 11250];
-                    chart.options.scales.y.min = 9800;
-                    chart.options.scales.y.max = 11500;
+                    // Update metrics with single trade
+                    document.querySelector('.col-md-3:nth-child(1) h3').textContent = `$${singleTradeProfit}`;
+                    document.querySelector('.col-md-3:nth-child(1) h3').className = isWin ? 'text-success' : 'text-danger';
+                    
+                    document.querySelector('.col-md-3:nth-child(2) h3').textContent = '1';
+                    document.querySelector('.col-md-3:nth-child(3) h3').textContent = isWin ? '100%' : '0%';
+                    document.querySelector('.col-md-3:nth-child(4) h3').textContent = isWin ? '0%' : Math.abs(parseFloat(singleTradeProfit)/100).toFixed(1) + '%';
+                    
+                    // Update chart with single trade result
+                    const finalBalance = 10000 + parseFloat(singleTradeProfit);
+                    chart.data.labels = ['Start', 'Trade Entry', 'Trade Exit'];
+                    chart.data.datasets[0].data = [10000, 10000, finalBalance];
+                    chart.options.scales.y.min = Math.min(9800, finalBalance - 200);
+                    chart.options.scales.y.max = Math.max(10200, finalBalance + 200);
                     chart.update();
                     
                     // Reset button
                     button.textContent = originalText;
                     button.disabled = false;
                     
-                    alert(`Backtest completed for ${currencyPair} (${startDate} to ${endDate})`);
+                    alert(`Single trade completed: ${isWin ? 'WIN' : 'LOSS'} $${singleTradeProfit} (${startDate} to ${endDate})`);
+                    
+                    // Auto-reset to zero baselines after 5 seconds
+                    setTimeout(resetToZero, 5000);
                 }, 2000);
+            }
+            
+            // Reset function to clean zero baselines
+            function resetToZero() {
+                document.querySelector('.col-md-3:nth-child(1) h3').textContent = '$0.00';
+                document.querySelector('.col-md-3:nth-child(1) h3').className = 'text-success';
+                
+                document.querySelector('.col-md-3:nth-child(2) h3').textContent = '0';
+                document.querySelector('.col-md-3:nth-child(3) h3').textContent = '0%';
+                document.querySelector('.col-md-3:nth-child(4) h3').textContent = '0%';
+                
+                // Reset chart to clean baseline
+                chart.data.labels = ['Start'];
+                chart.data.datasets[0].data = [10000];
+                chart.options.scales.y.min = 9500;
+                chart.options.scales.y.max = 10500;
+                chart.update();
             }
         </script>
     </body>
