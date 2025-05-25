@@ -793,7 +793,7 @@ def apply_user_stop_loss_take_profit(strategy_result, df, sl_tp_params):
 
         # Check if SL or TP was hit first by scanning price action
         for i in range(entry_idx + 1, len(df)):
-            row = df.iloc```python
+            row = df.iloc[i]
 [i]
             current_high = row['High']
             current_low = row['Low']
