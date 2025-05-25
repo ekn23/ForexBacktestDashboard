@@ -63,7 +63,16 @@ def get_available_data():
 
 # Professional moving average strategy with comprehensive trading rules
 def simple_ma_strategy(df: pd.DataFrame, fast_period=10, slow_period=20):
-    """Professional moving average strategy with OANDA-compliant trading rules."""
+    """
+    Professional moving average strategy with embedded parameters.
+    
+    Strategy Parameters (configurable within this function):
+    - fast_period: 10 (Fast moving average period)
+    - slow_period: 20 (Slow moving average period)
+    """
+    # Strategy parameters embedded here
+    fast_period = 10
+    slow_period = 20
     if len(df) < slow_period:
         return {'trades': [], 'signals': []}
     
@@ -216,7 +225,18 @@ def run_selected_strategy(df: pd.DataFrame, strategy_params):
         return simple_ma_strategy(df, 10, 20)
 
 def rsi_strategy(df: pd.DataFrame, period=14, oversold=30, overbought=70):
-    """RSI-based trading strategy."""
+    """
+    RSI-based trading strategy with embedded parameters.
+    
+    Strategy Parameters (configurable within this function):
+    - period: 14 (RSI calculation period)
+    - oversold: 30 (Oversold threshold for buy signals)
+    - overbought: 70 (Overbought threshold for sell signals)
+    """
+    # Strategy parameters embedded here
+    period = 14
+    oversold = 30
+    overbought = 70
     df['RSI'] = calculate_rsi(df, period)
     
     signals = []
@@ -271,7 +291,16 @@ def rsi_strategy(df: pd.DataFrame, period=14, oversold=30, overbought=70):
     }
 
 def bollinger_strategy(df: pd.DataFrame, period=20, std_dev=2):
-    """Bollinger Bands strategy."""
+    """
+    Bollinger Bands strategy with embedded parameters.
+    
+    Strategy Parameters (configurable within this function):
+    - period: 20 (Bollinger Bands period)
+    - std_dev: 2 (Standard deviation multiplier)
+    """
+    # Strategy parameters embedded here
+    period = 20
+    std_dev = 2
     upper, middle, lower = calculate_bollinger_bands(df, period, std_dev)
     df['BB_Upper'] = upper
     df['BB_Middle'] = middle
@@ -866,32 +895,7 @@ def index():
                                 </div>
                             </div>
 
-                            <!-- Strategy Parameters (Dynamic based on selected strategy) -->
-                            <div class="row mt-3" id="strategyParams">
-                                <div class="col-12">
-                                    <h6 class="text-warning">Strategy Parameters</h6>
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Fast MA Period</label>
-                                    <input type="number" class="form-control" id="fastMA" value="10" min="2" max="50">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">Slow MA Period</label>
-                                    <input type="number" class="form-control" id="slowMA" value="20" min="5" max="200">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">RSI Period</label>
-                                    <input type="number" class="form-control" id="rsiPeriod" value="14" min="2" max="50">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">RSI Oversold</label>
-                                    <input type="number" class="form-control" id="rsiOversold" value="30" min="10" max="40">
-                                </div>
-                                <div class="col-md-2">
-                                    <label class="form-label">RSI Overbought</label>
-                                    <input type="number" class="form-control" id="rsiOverbought" value="70" min="60" max="90">
-                                </div>
-                            </div>
+                            <!-- Strategy parameters are now embedded within strategy files -->
                         </div>
                     </div>
                 </div>
@@ -974,12 +978,7 @@ def index():
                         take_profit_value: parseFloat(document.getElementById('takeProfitValue').value) || 1.5,
                         trailing_stop: document.getElementById('trailingStop').value,
                         trailing_distance: parseFloat(document.getElementById('trailingDistance').value) || 15,
-                        primary_strategy: document.getElementById('primaryStrategy').value,
-                        fast_ma: parseInt(document.getElementById('fastMA').value) || 10,
-                        slow_ma: parseInt(document.getElementById('slowMA').value) || 20,
-                        rsi_period: parseInt(document.getElementById('rsiPeriod').value) || 14,
-                        rsi_oversold: parseInt(document.getElementById('rsiOversold').value) || 30,
-                        rsi_overbought: parseInt(document.getElementById('rsiOverbought').value) || 70
+                        primary_strategy: document.getElementById('primaryStrategy').value
                     })
                 })
                 .then(response => response.json())
