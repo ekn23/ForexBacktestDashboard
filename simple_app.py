@@ -174,9 +174,9 @@ def calculate_professional_pnl(position, exit_price):
     pnl = pip_profit * lot_size * 10
     return round(pnl, 2)
 
-def run_realistic_backtest_engine(strategy_result, starting_capital):
+def run_realistic_backtest_engine(strategy_result, starting_capital, user_params=None):
     """
-    Ultra-realistic backtest engine with OANDA-compliant trading rules
+    Ultra-realistic backtest engine with user-configurable trading parameters
     Includes spreads, slippage, margin requirements, and realistic execution
     """
     trades = strategy_result.get('trades', [])
@@ -185,9 +185,16 @@ def run_realistic_backtest_engine(strategy_result, starting_capital):
     if not trades and not signals:
         return 0.0
     
-    # Professional trading costs (OANDA-style)
-    spread_cost_per_lot = 2.0  # 2 pips spread cost
-    slippage_per_lot = 1.5     # 1.5 pips slippage
+    # Use user's configurable trading costs or defaults
+    if user_params:
+        spread_cost_per_lot = user_params.get('spread_pips', 2.0)
+        slippage_per_lot = user_params.get('slippage_pips', 1.5)
+        user_lot_size = user_params.get('lot_size', 0.05)
+    else:
+        spread_cost_per_lot = 2.0  # 2 pips spread cost
+        slippage_per_lot = 1.5     # 1.5 pips slippage
+        user_lot_size = 0.05
+    
     commission_per_lot = 0.0   # OANDA no commission model
     
     total_pnl = 0.0
@@ -397,6 +404,39 @@ def index():
                                     <button class="btn btn-secondary mt-4" onclick="resetToZero()">Reset to Zero</button>
                                 </div>
                             </div>
+                            
+                            <!-- Trading Parameters Controls -->
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <h6 class="text-info">Trading Parameters</h6>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-2">
+                                    <label class="form-label">Starting Capital ($)</label>
+                                    <input type="number" class="form-control" id="startingCapital" value="400" min="100" max="100000">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Lot Size</label>
+                                    <input type="number" class="form-control" id="lotSize" value="0.05" min="0.01" max="10" step="0.01">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Spread (pips)</label>
+                                    <input type="number" class="form-control" id="spreadPips" value="2.0" min="0.1" max="10" step="0.1">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Slippage (pips)</label>
+                                    <input type="number" class="form-control" id="slippagePips" value="1.5" min="0" max="5" step="0.1">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Risk % per Trade</label>
+                                    <input type="number" class="form-control" id="riskPercent" value="2.0" min="0.5" max="10" step="0.1">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Leverage</label>
+                                    <input type="number" class="form-control" id="leverage" value="50" min="1" max="500">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -466,7 +506,13 @@ def index():
                         symbol: currencyPair,
                         timeframe: timeframe,
                         start_date: startDate,
-                        end_date: endDate
+                        end_date: endDate,
+                        starting_capital: parseFloat(document.getElementById('startingCapital').value) || 400,
+                        lot_size: parseFloat(document.getElementById('lotSize').value) || 0.05,
+                        spread_pips: parseFloat(document.getElementById('spreadPips').value) || 2.0,
+                        slippage_pips: parseFloat(document.getElementById('slippagePips').value) || 1.5,
+                        risk_percent: parseFloat(document.getElementById('riskPercent').value) || 2.0,
+                        leverage: parseFloat(document.getElementById('leverage').value) || 50
                     })
                 })
                 .then(response => response.json())
@@ -483,12 +529,13 @@ def index():
                         document.querySelector('.col-md-3:nth-child(3) h3').textContent = data.win_rate ? `${data.win_rate.toFixed(1)}%` : '0%';
                         document.querySelector('.col-md-3:nth-child(4) h3').textContent = data.max_drawdown ? `${data.max_drawdown.toFixed(1)}%` : '0%';
                         
-                        // Update chart with real performance
-                        const finalBalance = 10000 + profit;
+                        // Update chart with real performance (starting from $400)
+                        const startingCapital = parseFloat(document.getElementById('startingCapital').value) || 400;
+                        const finalBalance = startingCapital + profit;
                         chart.data.labels = ['Start', 'Trade Entry', 'Trade Exit'];
-                        chart.data.datasets[0].data = [10000, 10000, finalBalance];
-                        chart.options.scales.y.min = Math.min(9800, finalBalance - 200);
-                        chart.options.scales.y.max = Math.max(10200, finalBalance + 200);
+                        chart.data.datasets[0].data = [startingCapital, startingCapital, finalBalance];
+                        chart.options.scales.y.min = Math.min(startingCapital - 50, finalBalance - 50);
+                        chart.options.scales.y.max = Math.max(startingCapital + 50, finalBalance + 50);
                         chart.update();
                         
                         // Show risk management alerts
@@ -583,6 +630,14 @@ def run_backtest():
         timeframe = data.get('timeframe', '30_M')
         start_date = data.get('start_date')
         end_date = data.get('end_date')
+        
+        # Get user's configurable trading parameters
+        starting_capital = data.get('starting_capital', 400)
+        lot_size = data.get('lot_size', 0.05)
+        spread_pips = data.get('spread_pips', 2.0)
+        slippage_pips = data.get('slippage_pips', 1.5)
+        risk_percent = data.get('risk_percent', 2.0)
+        leverage = data.get('leverage', 50)
         
         # Find the corresponding CSV file
         available_files = get_available_data()
