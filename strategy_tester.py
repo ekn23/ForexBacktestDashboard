@@ -6,7 +6,7 @@ import numpy as np
 import os
 from typing import Dict, List, Any
 from strategies.base_strategy import BaseStrategy
-from strategies.example_strategies import MovingAverageCrossover, RSIStrategy, MACDStrategy
+from strategies.example_strategies import MovingAverageCrossover, MACDStrategy
 
 class StrategyTester:
     """
@@ -175,11 +175,7 @@ def test_moving_average_strategy(symbol: str = "EURUSD", timeframe: str = "30_M"
     strategy = MovingAverageCrossover(symbol, timeframe, fast_period=10, slow_period=20)
     return tester.run_backtest(strategy, symbol, timeframe)
 
-def test_rsi_strategy(symbol: str = "EURUSD", timeframe: str = "30_M"):
-    """Test RSI Strategy"""
-    tester = StrategyTester()
-    strategy = RSIStrategy(symbol, timeframe, rsi_period=14, oversold=30, overbought=70)
-    return tester.run_backtest(strategy, symbol, timeframe)
+
 
 def optimize_ma_strategy(symbol: str = "EURUSD", timeframe: str = "30_M"):
     """Optimize Moving Average Strategy"""

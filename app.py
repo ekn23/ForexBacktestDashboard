@@ -6,8 +6,8 @@ import logging
 from flask import Flask, request, jsonify, render_template_string, send_from_directory, render_template
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
-from strategy_tester import StrategyTester, test_moving_average_strategy, test_rsi_strategy, optimize_ma_strategy
-from strategies.example_strategies import MovingAverageCrossover, RSIStrategy, MACDStrategy
+from strategy_tester import StrategyTester, test_moving_average_strategy, optimize_ma_strategy
+from strategies.example_strategies import MovingAverageCrossover, MACDStrategy
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -432,10 +432,7 @@ def strategy_chart_api(symbol, timeframe):
         )
         
         # Create strategy
-        if strategy_type == 'RSI':
-            strategy = RSIStrategy(symbol, timeframe, trading_config=config)
-        else:
-            strategy = MovingAverageCrossover(symbol, timeframe, trading_config=config)
+        strategy = MovingAverageCrossover(symbol, timeframe)
         
         # Run backtest to get trades
         tester = StrategyTester("data")
