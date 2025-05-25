@@ -686,6 +686,20 @@ def calculate_position_size(account_balance: float, risk_percent: float = 2.0, s
     position_size = max(min_lot, min(max_lot, position_size))
     return round(position_size, 2)
 
+def calculate_real_win_rate(strategy_result):
+    """Calculate actual win rate from real trade results."""
+    trades = strategy_result.get('trades', [])
+    if not trades:
+        return 0.0
+    
+    winning_trades = 0
+    for trade in trades:
+        pnl = trade.get('pnl', 0)
+        if pnl > 0:
+            winning_trades += 1
+    
+    return round((winning_trades / len(trades)) * 100, 1)
+
 def check_account_health(current_balance: float, starting_capital: float = 400):
     """Check account health with protective warnings."""
     balance_ratio = current_balance / starting_capital
@@ -1628,7 +1642,7 @@ def run_backtest():
             'status': 'success',
             'total_pnl': total_pnl,
             'signals_count': signals_count,
-            'win_rate': 65.0 if signals_count > 0 else 0,
+            'win_rate': calculate_real_win_rate(strategy_result) if signals_count > 0 else 0,
             'max_drawdown': 5.2 if signals_count > 0 else 0,
             'data_points': len(df),
             'date_range': f"{df['datetime'].min()} to {df['datetime'].max()}" if len(df) > 0 else "No data",
