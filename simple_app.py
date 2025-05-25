@@ -588,15 +588,26 @@ def calculate_professional_pnl(position, exit_price):
     direction = position['direction']
     lot_size = position['lot_size']
     
-    # Professional pip calculation
-    if direction == 'BUY':
-        pip_profit = (exit_price - entry_price) * 10000
-    else:
-        pip_profit = (entry_price - exit_price) * 10000
+    # Handle JPY pairs differently (different pip value)
+    is_jpy = 'JPY' in position.get('symbol', '')
+    multiplier = 100 if is_jpy else 10000
     
-    # OANDA-style P&L calculation (approximately $1 per pip per 0.1 lot)
-    pnl = pip_profit * lot_size * 10
-    return round(pnl, 2)
+    # Professional pip calculation with JPY pair handling
+    if direction == 'BUY':
+        pip_profit = (exit_price - entry_price) * multiplier
+    else:
+        pip_profit = (entry_price - exit_price) * multiplier
+    
+    # OANDA-style P&L calculation with proper pip value
+    pip_value = 1000 if is_jpy else 10  # JPY pairs have different pip value
+    pnl = pip_profit * lot_size * pip_value
+    
+    # Account for spread and commission
+    spread_cost = position.get('spread_cost', 0)
+    commission = position.get('commission', 0)
+    net_pnl = pnl - spread_cost - commission
+    
+    return round(net_pnl, 2)
 
 def run_realistic_backtest_engine(strategy_result, starting_capital, user_params=None):
     """
