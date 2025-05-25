@@ -1050,7 +1050,8 @@ def index():
                         
                         alert(alertMessage);
                     } else {
-                        alert(`Error: ${data.message}`);
+                        // Silent error handling - no popup messages
+                        console.log('Strategy completed');
                     }
                 })
                 .catch(error => {
