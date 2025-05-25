@@ -93,7 +93,7 @@ def simple_ma_strategy(df: pd.DataFrame, fast_period=10, slow_period=20):
     
     return {
         'trades': trades,
-        'signals': signals[:10]  # Limit to first 10 signals for testing
+        'signals': signals  # Return all signals found in the date range
     }
 
 # Professional risk management
@@ -448,15 +448,18 @@ def run_backtest():
             })
         
         # Filter by date range if provided
+        original_length = len(df)
         if start_date and end_date:
             try:
                 start_dt = pd.to_datetime(start_date)
                 end_dt = pd.to_datetime(end_date)
                 df = df[(df['datetime'] >= start_dt) & (df['datetime'] <= end_dt)]
-            except:
+                print(f"Filtered data: {original_length} -> {len(df)} rows for {start_date} to {end_date}")
+            except Exception as e:
+                print(f"Date filtering failed: {e}")
                 pass  # Use full dataset if date filtering fails
         
-        # Run moving average strategy on your real data
+        # Run moving average strategy on your filtered real data
         strategy_result = simple_ma_strategy(df)
         
         # Calculate professional metrics with risk management
