@@ -814,8 +814,8 @@ def index():
                                     </select>
                                 </div>
                                 <div class="col-md-2">
-                                    <label class="form-label">Take Profit Value</label>
-                                    <input type="number" class="form-control" id="takeProfitValue" value="1.5" min="0.5" max="5" step="0.1">
+                                    <label class="form-label" id="takeProfitLabel">Risk:Reward Ratio</label>
+                                    <input type="number" class="form-control" id="takeProfitValue" value="1.5" min="0.5" max="5" step="0.1" title="For Risk:Reward - enter ratio like 1.5 for 1:1.5">
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Trailing Stop</label>
@@ -834,7 +834,7 @@ def index():
                             <!-- Strategy Management Section -->
                             <div class="row mt-4">
                                 <div class="col-12">
-                                    <h6 class="text-success">Strategy Management</h6>
+                                    <h6 class="text-success">Strategy Selection & Management</h6>
                                 </div>
                             </div>
                             <div class="row mt-2">
@@ -849,7 +849,7 @@ def index():
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <label class="form-label">Upload New Strategy</label>
+                                    <label class="form-label">Upload Strategy (Python & MQL4/5)</label>
                                     <input type="file" class="form-control" id="strategyFile" accept=".py,.mq4,.mq5">
                                 </div>
                                 <div class="col-md-2">
@@ -865,7 +865,7 @@ def index():
                                     <button type="button" class="btn btn-info form-control" onclick="editStrategy()">Edit</button>
                                 </div>
                             </div>
-                            
+
                             <!-- Strategy Parameters (Dynamic based on selected strategy) -->
                             <div class="row mt-3" id="strategyParams">
                                 <div class="col-12">
