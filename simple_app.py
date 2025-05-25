@@ -794,21 +794,20 @@ def apply_user_stop_loss_take_profit(strategy_result, df, sl_tp_params):
         # Check if SL or TP was hit first by scanning price action
         for i in range(entry_idx + 1, len(df)):
             row = df.iloc[i]
-[i]
             current_high = row['High']
-                current_low = row['Low']
+            current_low = row['Low']
 
-                if direction == 'BUY':
-                    # Check Stop Loss hit
-                    if current_low <= stop_loss:
-                        exit_price = stop_loss
-                        exit_time = row['datetime']
-                        break
-                    # Check Take Profit hit
-                    elif current_high >= take_profit:
-                        exit_price = take_profit
-                        exit_time = row['datetime']
-                        break
+            if direction == 'BUY':
+                # Check Stop Loss hit
+                if current_low <= stop_loss:
+                    exit_price = stop_loss
+                    exit_time = row['datetime']
+                    break
+                # Check Take Profit hit
+                elif current_high >= take_profit:
+                    exit_price = take_profit
+                    exit_time = row['datetime']
+                    break
             else:  # SELL
                 # Check Stop Loss hit
                 if current_high >= stop_loss:
