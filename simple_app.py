@@ -46,11 +46,16 @@ def get_available_data():
     # Check attached_assets folder for your forex data
     for filepath in glob.glob("attached_assets/*.csv"):
         filename = os.path.basename(filepath)
+        # Parse filename like EURUSD_Candlestick_5_M_BID_26.04.2023-26.04.2025.csv
         parts = filename.replace('.csv', '').split('_')
         
-        if len(parts) >= 3:
+        if len(parts) >= 4:
             symbol = parts[0]
-            timeframe = parts[2] + '_' + parts[3] if len(parts) > 3 else parts[2]
+            # Extract timeframe (5_M or 30_M)
+            if parts[2].isdigit() and parts[3] == 'M':
+                timeframe = parts[2] + '_M'
+            else:
+                timeframe = parts[2]
             
             data_files.append({
                 'symbol': symbol,
