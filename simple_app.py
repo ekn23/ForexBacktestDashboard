@@ -1443,6 +1443,69 @@ def strategy_editor(strategy_name):
             </div>
 
             <script>
+                function uploadStrategy() {
+                    const fileInput = document.getElementById('strategyFile');
+                    const file = fileInput.files[0];
+                    
+                    if (!file) {
+                        alert('Please select a file first');
+                        return;
+                    }
+
+                    const formData = new FormData();
+                    formData.append('strategy_file', file);
+
+                    fetch('/upload_strategy', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('Upload failed: ' + data.message);
+                        }
+                    });
+                }
+
+                function removeStrategy() {
+                    const strategy = document.getElementById('primaryStrategy').value;
+                    if (!strategy) {
+                        alert('Please select a strategy first');
+                        return;
+                    }
+
+                    fetch('/remove_strategy', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            strategy_name: strategy
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('Remove failed: ' + data.message);
+                        }
+                    });
+                }
+
+                function editStrategy() {
+                    const strategy = document.getElementById('primaryStrategy').value;
+                    if (!strategy) {
+                        alert('Please select a strategy first');
+                        return;
+                    }
+                    window.open(`/strategy_editor/${strategy}`, '_blank');
+                }
+
                 function saveStrategy() {{
                     const code = document.getElementById('codeEditor').value;
 
@@ -1565,4 +1628,5 @@ def validate_mql_strategy_file(filepath, strategy_name):
         if not has_required:
             return {
                 'valid': False, 
-                'error': f'MQL strategy file must contain at least one of: {", ".join(required_elements +
+                'error': f'MQL strategy file must contain at least one of: {", ".join(required_elements + optional_elements)}'
+            }
