@@ -1747,16 +1747,16 @@ def run_backtest():
         # Run selected strategy with user parameters
         strategy_result = run_selected_strategy(df, strategy_params)
         
-        # Apply YOUR Stop Loss & Take Profit settings to all trades
-        if strategy_result.get('trades'):
-            strategy_result = apply_user_stop_loss_take_profit(strategy_result, df, {
-                'stop_loss_type': request.json.get('stop_loss_type', 'atr'),
-                'stop_loss_value': request.json.get('stop_loss_value', 2.0),
-                'take_profit_type': request.json.get('take_profit_type', 'ratio'),
-                'take_profit_value': request.json.get('take_profit_value', 1.5),
-                'trailing_stop': request.json.get('trailing_stop', 'none'),
-                'trailing_distance': request.json.get('trailing_distance', 15)
-            })
+        # Apply YOUR Stop Loss & Take Profit settings to all trades (temporarily disabled for debugging)
+        # if strategy_result.get('trades'):
+        #     strategy_result = apply_user_stop_loss_take_profit(strategy_result, df, {
+        #         'stop_loss_type': request.json.get('stop_loss_type', 'atr'),
+        #         'stop_loss_value': request.json.get('stop_loss_value', 2.0),
+        #         'take_profit_type': request.json.get('take_profit_type', 'ratio'),
+        #         'take_profit_value': request.json.get('take_profit_value', 1.5),
+        #         'trailing_stop': request.json.get('trailing_stop', 'none'),
+        #         'trailing_distance': request.json.get('trailing_distance', 15)
+        #     })
         
         # Calculate professional metrics with risk management
         signals_count = len(strategy_result['signals'])
