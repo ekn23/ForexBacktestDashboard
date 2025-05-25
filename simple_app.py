@@ -377,6 +377,8 @@ def macd_strategy(df: pd.DataFrame, fast=12, slow=26, signal=9):
     slow = 26
     signal = 9
     
+    # Create proper copy to avoid pandas warnings and embedded page errors
+    df = df.copy()
     macd_line, signal_line, histogram = calculate_macd(df, fast, slow, signal)
     df['MACD'] = macd_line
     df['MACD_Signal'] = signal_line
@@ -455,6 +457,9 @@ def stochastic_strategy(df: pd.DataFrame, k_period=14, d_period=3, oversold=20, 
     d_period = 3
     oversold = 20
     overbought = 80
+    
+    # Create proper copy to avoid pandas warnings and embedded page errors
+    df = df.copy()
     k_percent, d_percent = calculate_stochastic(df, k_period, d_period)
     df['Stoch_K'] = k_percent
     df['Stoch_D'] = d_percent
