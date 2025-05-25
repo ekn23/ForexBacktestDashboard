@@ -758,12 +758,7 @@ def index():
                                         <option value="5_M">5_M</option>
                                     </select>
                                 </div>
-                                <div class="col-md-3">
-                                    <label class="form-label">Strategy</label>
-                                    <select class="form-select">
-                                        <option>MA Crossover</option>
-                                    </select>
-                                </div>
+
                                 <div class="col-md-3">
                                     <label class="form-label">Start Date</label>
                                     <input type="date" class="form-control" id="startDate" value="2025-01-01">
