@@ -61,16 +61,16 @@ class TradingConfig:
         if self.margin_requirements is None:
             # OANDA margin requirements (as percentage)
             self.margin_requirements = {
-                'EURUSD': 3.33,  # 30:1 leverage = 3.33% margin
-                'GBPUSD': 3.33,
-                'USDJPY': 3.33,
-                'USDCHF': 3.33,
-                'USDCAD': 3.33,
-                'AUDUSD': 3.33,
-                'NZDUSD': 3.33,
-                'EURJPY': 5.0,   # 20:1 leverage = 5% margin
-                'GBPJPY': 5.0,
-                'EURGBP': 3.33
+                'EURUSD': 2.0,  # 50:1 leverage = 2% margin
+                'GBPUSD': 2.0,
+                'USDJPY': 2.0,
+                'USDCHF': 2.0,
+                'USDCAD': 2.0,
+                'AUDUSD': 2.0,
+                'NZDUSD': 2.0,
+                'EURJPY': 3.33,  # 30:1 leverage = 3.33% margin
+                'GBPJPY': 3.33,
+                'EURGBP': 2.0
             }
         
         if self.trading_sessions is None:
