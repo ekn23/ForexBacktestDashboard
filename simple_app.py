@@ -1114,7 +1114,7 @@ def index():
                     labels: ['Start'],
                     datasets: [{
                         label: 'Account Balance',
-                        data: [10000],
+                        data: [400],
                         borderColor: 'rgb(75, 192, 192)',
                         tension: 0.1
                     }]
@@ -1124,8 +1124,8 @@ def index():
                     scales: {
                         y: {
                             beginAtZero: false,
-                            min: 9500,
-                            max: 10500
+                            min: 300,
+                            max: 500
                         }
                     }
                 }
