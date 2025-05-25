@@ -415,7 +415,7 @@ def strategy_chart_api(symbol, timeframe):
     """Generate interactive chart with trade signals overlaid on price data."""
     try:
         from trading_config import TradingConfig
-        from strategies.example_strategies import RSIStrategy, MovingAverageCrossover
+        from strategies.example_strategies import MovingAverageCrossover
         from strategy_tester import StrategyTester
         import plotly.graph_objects as go
         import plotly.utils
