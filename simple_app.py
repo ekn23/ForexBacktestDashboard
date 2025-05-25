@@ -347,7 +347,7 @@ def bollinger_strategy(df: pd.DataFrame, period=20, std_dev=2):
                     'entry_price': position['entry_price'],
                     'exit_price': current_row['Close'],
                     'type': position['type'],
-                    'pnl': calculate_professional_pnl(position, current_row['Close'])
+                    'pnl': (current_row['Close'] - position['entry_price']) * 10000
                 }
                 trades.append(trade)
                 position = None
