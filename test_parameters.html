@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Parameter Test</title>
+</head>
+<body>
+    <h1>Trading Parameters Test</h1>
+    
+    <div>
+        <label>Starting Capital:</label>
+        <input type="number" id="starting-capital" value="400">
+    </div>
+    
+    <div>
+        <label>Lot Size:</label>
+        <input type="number" id="lot-size" value="0.05" step="0.01">
+    </div>
+    
+    <div>
+        <label>Spread (pips):</label>
+        <input type="number" id="spread-pips" value="2.0" step="0.1">
+    </div>
+    
+    <div>
+        <label>Slippage (pips):</label>
+        <input type="number" id="slippage-pips" value="1.5" step="0.1">
+    </div>
+    
+    <div>
+        <label>Risk % per Trade:</label>
+        <input type="number" id="risk-percent" value="20.0" step="0.1">
+    </div>
+    
+    <div>
+        <label>Leverage:</label>
+        <input type="number" id="leverage" value="50">
+    </div>
+    
+    <div>
+        <label>Stop Loss Type:</label>
+        <select id="stop-loss-type">
+            <option value="fixed">Fixed Pips</option>
+            <option value="atr">ATR</option>
+        </select>
+    </div>
+    
+    <div>
+        <label>Stop Loss Value:</label>
+        <input type="number" id="stop-loss-value" value="20.0" step="0.1">
+    </div>
+    
+    <div>
+        <label>Take Profit Type:</label>
+        <select id="take-profit-type">
+            <option value="ratio">Risk:Reward Ratio</option>
+            <option value="fixed">Fixed Pips</option>
+        </select>
+    </div>
+    
+    <div>
+        <label>Take Profit Value:</label>
+        <input type="number" id="take-profit-value" value="1.5" step="0.1">
+    </div>
+    
+    <button onclick="testParameters()">Test Parameters</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        function testParameters() {
+            const params = {
+                symbol: 'EURUSD',
+                timeframe: '30_M',
+                start_date: '2025-01-01',
+                end_date: '2025-04-25',
+                starting_capital: parseFloat(document.getElementById('starting-capital').value),
+                lot_size: parseFloat(document.getElementById('lot-size').value),
+                spread_pips: parseFloat(document.getElementById('spread-pips').value),
+                slippage_pips: parseFloat(document.getElementById('slippage-pips').value),
+                risk_percent: parseFloat(document.getElementById('risk-percent').value),
+                leverage: parseFloat(document.getElementById('leverage').value),
+                stop_loss_type: document.getElementById('stop-loss-type').value,
+                stop_loss_value: parseFloat(document.getElementById('stop-loss-value').value),
+                take_profit_type: document.getElementById('take-profit-type').value,
+                take_profit_value: parseFloat(document.getElementById('take-profit-value').value)
+            };
+            
+            console.log('Sending parameters:', params);
+            
+            fetch('/api/run_backtest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').innerHTML = 'Error: ' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>

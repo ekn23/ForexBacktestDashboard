@@ -768,11 +768,14 @@ def apply_user_stop_loss_take_profit(strategy_result, df, sl_tp_params):
             
         atr_value = df.iloc[entry_idx]['ATR'] if entry_idx < len(df) else 0.0002
         
-        # Calculate YOUR Stop Loss from UI settings
+        # Calculate YOUR Stop Loss from UI settings (NO DEFAULTS ALLOWED)
+        if not sl_tp_params or sl_tp_params.get('stop_loss_type') is None or sl_tp_params.get('stop_loss_value') is None:
+            raise ValueError("Stop Loss parameters are required - no hardcoded defaults allowed")
+        
         stop_loss = calculate_stop_loss(
             entry_price, 
-            sl_tp_params.get('stop_loss_type', 'atr'),
-            sl_tp_params.get('stop_loss_value', 2.0),
+            sl_tp_params.get('stop_loss_type'),
+            sl_tp_params.get('stop_loss_value'),
             atr_value,
             direction
         )
@@ -1696,11 +1699,19 @@ def run_backtest():
         risk_percent = data.get('risk_percent')
         leverage = data.get('leverage')
         
-        # Validate required parameters
+        # Validate ALL required parameters - NO HARDCODED DEFAULTS ALLOWED
         if starting_capital is None:
             return jsonify({'status': 'error', 'message': 'Starting capital is required'})
         if lot_size is None:
             return jsonify({'status': 'error', 'message': 'Lot size is required'})
+        if spread_pips is None:
+            return jsonify({'status': 'error', 'message': 'Spread pips is required'})
+        if slippage_pips is None:
+            return jsonify({'status': 'error', 'message': 'Slippage pips is required'})
+        if risk_percent is None:
+            return jsonify({'status': 'error', 'message': 'Risk percent is required'})
+        if leverage is None:
+            return jsonify({'status': 'error', 'message': 'Leverage is required'})
         
         # Find the corresponding CSV file
         available_files = get_available_data()
