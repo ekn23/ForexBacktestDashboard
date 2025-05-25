@@ -226,6 +226,8 @@ def run_selected_strategy(df: pd.DataFrame, strategy_params):
         return macd_strategy(df, 12, 26, 9)
     elif strategy_type == 'stochastic':
         return stochastic_strategy(df, 14, 3, 20, 80)
+    elif strategy_type == 'smart_smc_inverted':
+        return smart_smc_inverted_strategy(df, strategy_params)
     else:
         return simple_ma_strategy(df, 10, 20)
 
@@ -1059,6 +1061,7 @@ def index():
                                         <option value="bollinger">Bollinger Bands</option>
                                         <option value="macd">MACD Strategy</option>
                                         <option value="stochastic">Stochastic Strategy</option>
+                                        <option value="smart_smc_inverted">Smart SMC EA Inverted (Your MQL4)</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -1812,6 +1815,164 @@ def run_backtest():
             'status': 'error',
             'message': str(e)
         })
+
+def smart_smc_inverted_strategy(df: pd.DataFrame, strategy_params):
+    """
+    Smart Money Concept EA Inverted - Your uploaded MQL4 strategy
+    
+    Strategy Parameters (from your MQL4 code):
+    - RSI_Period: 14, RSI_Overbought: 70.0, RSI_Oversold: 30.0
+    - BB_Period: 20, BB_Deviation: 2.0
+    - ADX_Period: 14, ADX_Threshold: 20.0
+    - SL_Percent: 2.0, TP_Percent: 4.0
+    """
+    # Your MQL4 strategy parameters
+    rsi_period = 14
+    rsi_overbought = 70.0
+    rsi_oversold = 30.0
+    bb_period = 20
+    bb_deviation = 2.0
+    adx_threshold = 20.0
+    sl_percent = 2.0
+    tp_percent = 4.0
+    
+    # Calculate indicators (converted from your MQL4 code)
+    rsi = calculate_rsi(df, period=rsi_period)
+    bb_upper, bb_middle, bb_lower = calculate_bollinger_bands(df, period=bb_period, std_dev=bb_deviation)
+    
+    # Simplified Parabolic SAR and ADX
+    sar = df['Close'].rolling(window=5).mean()
+    atr = calculate_atr(df, period=14)
+    adx = (atr / df['Close']) * 100
+    
+    trades = []
+    signals = []
+    
+    # Implement your inverted logic from MQL4
+    for i in range(max(rsi_period, bb_period), len(df)):
+        close = df.iloc[i]['Close']
+        current_rsi = rsi.iloc[i]
+        current_adx = adx.iloc[i] if not pd.isna(adx.iloc[i]) else 25
+        current_sar = sar.iloc[i]
+        current_bb_upper = bb_upper.iloc[i]
+        current_bb_lower = bb_lower.iloc[i]
+        current_bb_middle = bb_middle.iloc[i]
+        
+        # Your inverted buy logic: adx < threshold && rsi > overbought && close > bb_upper && close < sar
+        open_buy = (current_adx < adx_threshold and 
+                   current_rsi > rsi_overbought and 
+                   close > current_bb_upper and 
+                   close < current_sar)
+        
+        # Your inverted sell logic: adx < threshold && rsi < oversold && close < bb_lower && close > sar  
+        open_sell = (current_adx < adx_threshold and 
+                    current_rsi < rsi_oversold and 
+                    close < current_bb_lower and 
+                    close > current_sar)
+        
+        if open_buy:
+            entry_price = close
+            entry_time = df.iloc[i]['datetime']
+            
+            # Your MQL4 stop loss and take profit calculations
+            sl = entry_price - (sl_percent / 100.0) * entry_price
+            tp = entry_price + (tp_percent / 100.0) * entry_price
+            
+            # Find exit point based on your MQL4 exit conditions
+            exit_price = tp
+            exit_time = entry_time
+            
+            # Scan ahead for exit conditions: rsi < 50 || close > sar || close < bb_middle
+            for j in range(i + 1, min(i + 100, len(df))):
+                future_close = df.iloc[j]['Close']
+                future_rsi = rsi.iloc[j] if not pd.isna(rsi.iloc[j]) else 50
+                future_sar = sar.iloc[j]
+                future_bb_middle = bb_middle.iloc[j]
+                
+                # Check stop loss
+                if future_close <= sl:
+                    exit_price = sl
+                    exit_time = df.iloc[j]['datetime']
+                    break
+                # Check take profit
+                elif future_close >= tp:
+                    exit_price = tp
+                    exit_time = df.iloc[j]['datetime']
+                    break
+                # Check your exit conditions
+                elif future_rsi < 50 or future_close > future_sar or future_close < future_bb_middle:
+                    exit_price = future_close
+                    exit_time = df.iloc[j]['datetime']
+                    break
+            
+            trades.append({
+                'entry_time': entry_time,
+                'exit_time': exit_time,
+                'entry_price': entry_price,
+                'exit_price': exit_price,
+                'type': 'BUY',
+                'direction': 'BUY'
+            })
+            
+            signals.append({
+                'time': entry_time,
+                'price': entry_price,
+                'type': 'BUY'
+            })
+        
+        elif open_sell:
+            entry_price = close
+            entry_time = df.iloc[i]['datetime']
+            
+            # Your MQL4 stop loss and take profit calculations for sell
+            sl = entry_price + (sl_percent / 100.0) * entry_price
+            tp = entry_price - (tp_percent / 100.0) * entry_price
+            
+            exit_price = tp
+            exit_time = entry_time
+            
+            # Scan ahead for exit conditions: rsi > 50 || close < sar || close > bb_middle
+            for j in range(i + 1, min(i + 100, len(df))):
+                future_close = df.iloc[j]['Close']
+                future_rsi = rsi.iloc[j] if not pd.isna(rsi.iloc[j]) else 50
+                future_sar = sar.iloc[j]
+                future_bb_middle = bb_middle.iloc[j]
+                
+                # Check stop loss
+                if future_close >= sl:
+                    exit_price = sl
+                    exit_time = df.iloc[j]['datetime']
+                    break
+                # Check take profit
+                elif future_close <= tp:
+                    exit_price = tp
+                    exit_time = df.iloc[j]['datetime']
+                    break
+                # Check your exit conditions
+                elif future_rsi > 50 or future_close < future_sar or future_close > future_bb_middle:
+                    exit_price = future_close
+                    exit_time = df.iloc[j]['datetime']
+                    break
+            
+            trades.append({
+                'entry_time': entry_time,
+                'exit_time': exit_time,
+                'entry_price': entry_price,
+                'exit_price': exit_price,
+                'type': 'SELL',
+                'direction': 'SELL'
+            })
+            
+            signals.append({
+                'time': entry_time,
+                'price': entry_price,
+                'type': 'SELL'
+            })
+    
+    return {
+        'trades': trades,
+        'signals': signals
+    }
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
