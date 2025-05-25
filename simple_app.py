@@ -110,7 +110,7 @@ def calculate_position_size(account_balance: float, risk_percent: float = 2.0, s
     position_size = max(min_lot, min(max_lot, position_size))
     return round(position_size, 2)
 
-def check_account_health(current_balance: float, starting_capital: float = 10000):
+def check_account_health(current_balance: float, starting_capital: float = 400):
     """Check account health with protective warnings."""
     balance_ratio = current_balance / starting_capital
     
@@ -451,9 +451,12 @@ def run_backtest():
         original_length = len(df)
         if start_date and end_date:
             try:
-                start_dt = pd.to_datetime(start_date)
-                end_dt = pd.to_datetime(end_date)
-                df = df[(df['datetime'] >= start_dt) & (df['datetime'] <= end_dt)]
+                # Convert to timezone-naive datetime for comparison
+                start_dt = pd.to_datetime(start_date).tz_localize(None)
+                end_dt = pd.to_datetime(end_date).tz_localize(None)
+                # Make sure datetime column is also timezone-naive
+                df_datetime = df['datetime'].dt.tz_localize(None) if df['datetime'].dt.tz is not None else df['datetime']
+                df = df[(df_datetime >= start_dt) & (df_datetime <= end_dt)]
                 print(f"Filtered data: {original_length} -> {len(df)} rows for {start_date} to {end_date}")
             except Exception as e:
                 print(f"Date filtering failed: {e}")
@@ -466,7 +469,7 @@ def run_backtest():
         signals_count = len(strategy_result['signals'])
         
         # Professional position sizing and profit calculation
-        starting_capital = 10000
+        starting_capital = 400
         current_balance = starting_capital
         
         if signals_count > 0:
