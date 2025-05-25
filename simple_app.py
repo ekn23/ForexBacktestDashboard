@@ -831,15 +831,15 @@ def index():
                                 </div>
                             </div>
                             
-                            <!-- Technical Indicators Selection -->
+                            <!-- Strategy Management Section -->
                             <div class="row mt-4">
                                 <div class="col-12">
-                                    <h6 class="text-success">Technical Indicators</h6>
+                                    <h6 class="text-success">Strategy Management</h6>
                                 </div>
                             </div>
                             <div class="row mt-2">
-                                <div class="col-md-3">
-                                    <label class="form-label">Primary Strategy</label>
+                                <div class="col-md-4">
+                                    <label class="form-label">Select Strategy</label>
                                     <select class="form-select" id="primaryStrategy">
                                         <option value="ma_cross" selected>Moving Average Crossover</option>
                                         <option value="rsi">RSI Strategy</option>
@@ -847,6 +847,29 @@ def index():
                                         <option value="macd">MACD Strategy</option>
                                         <option value="stochastic">Stochastic Strategy</option>
                                     </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Upload New Strategy</label>
+                                    <input type="file" class="form-control" id="strategyFile" accept=".py">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-success form-control" onclick="uploadStrategy()">Upload</button>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-danger form-control" onclick="removeStrategy()">Remove</button>
+                                </div>
+                                <div class="col-md-1">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-info form-control" onclick="editStrategy()">Edit</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Strategy Parameters (Dynamic based on selected strategy) -->
+                            <div class="row mt-3" id="strategyParams">
+                                <div class="col-12">
+                                    <h6 class="text-warning">Strategy Parameters</h6>
                                 </div>
                                 <div class="col-md-2">
                                     <label class="form-label">Fast MA Period</label>
@@ -864,7 +887,7 @@ def index():
                                     <label class="form-label">RSI Oversold</label>
                                     <input type="number" class="form-control" id="rsiOversold" value="30" min="10" max="40">
                                 </div>
-                                <div class="col-md-1">
+                                <div class="col-md-2">
                                     <label class="form-label">RSI Overbought</label>
                                     <input type="number" class="form-control" id="rsiOverbought" value="70" min="60" max="90">
                                 </div>
@@ -1043,6 +1066,360 @@ def backtest_results():
         'profit_factor': 0.0,
         'trades': []
     })
+
+# Strategy Management System
+import os
+import importlib.util
+import inspect
+
+# Create strategies directory if it doesn't exist
+STRATEGIES_DIR = "custom_strategies"
+if not os.path.exists(STRATEGIES_DIR):
+    os.makedirs(STRATEGIES_DIR)
+
+@app.route('/upload_strategy', methods=['POST'])
+def upload_strategy():
+    """Upload a new custom trading strategy."""
+    try:
+        if 'strategy_file' not in request.files:
+            return jsonify({'status': 'error', 'message': 'No file uploaded'})
+        
+        file = request.files['strategy_file']
+        if file.filename == '':
+            return jsonify({'status': 'error', 'message': 'No file selected'})
+        
+        if not file.filename.endswith('.py'):
+            return jsonify({'status': 'error', 'message': 'File must be a Python (.py) file'})
+        
+        # Save the uploaded strategy file
+        filename = file.filename
+        filepath = os.path.join(STRATEGIES_DIR, filename)
+        file.save(filepath)
+        
+        # Validate the strategy file
+        strategy_name = filename[:-3]  # Remove .py extension
+        validation_result = validate_strategy_file(filepath, strategy_name)
+        
+        if not validation_result['valid']:
+            os.remove(filepath)  # Remove invalid file
+            return jsonify({'status': 'error', 'message': validation_result['error']})
+        
+        return jsonify({
+            'status': 'success', 
+            'message': f'Strategy "{strategy_name}" uploaded successfully',
+            'strategy_name': strategy_name
+        })
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Upload failed: {str(e)}'})
+
+@app.route('/remove_strategy', methods=['POST'])
+def remove_strategy():
+    """Remove a custom trading strategy."""
+    try:
+        data = request.get_json()
+        strategy_name = data.get('strategy_name')
+        
+        if not strategy_name:
+            return jsonify({'status': 'error', 'message': 'Strategy name required'})
+        
+        # Don't allow removal of built-in strategies
+        built_in_strategies = ['ma_cross', 'rsi', 'bollinger', 'macd', 'stochastic']
+        if strategy_name in built_in_strategies:
+            return jsonify({'status': 'error', 'message': 'Cannot remove built-in strategies'})
+        
+        filepath = os.path.join(STRATEGIES_DIR, f"{strategy_name}.py")
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            return jsonify({'status': 'success', 'message': f'Strategy "{strategy_name}" removed successfully'})
+        else:
+            return jsonify({'status': 'error', 'message': 'Strategy file not found'})
+            
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Remove failed: {str(e)}'})
+
+@app.route('/list_strategies')
+def list_strategies():
+    """Get list of all available strategies."""
+    try:
+        # Built-in strategies
+        strategies = [
+            {'name': 'ma_cross', 'display_name': 'Moving Average Crossover', 'type': 'built-in'},
+            {'name': 'rsi', 'display_name': 'RSI Strategy', 'type': 'built-in'},
+            {'name': 'bollinger', 'display_name': 'Bollinger Bands', 'type': 'built-in'},
+            {'name': 'macd', 'display_name': 'MACD Strategy', 'type': 'built-in'},
+            {'name': 'stochastic', 'display_name': 'Stochastic Strategy', 'type': 'built-in'}
+        ]
+        
+        # Custom strategies
+        if os.path.exists(STRATEGIES_DIR):
+            for filename in os.listdir(STRATEGIES_DIR):
+                if filename.endswith('.py'):
+                    strategy_name = filename[:-3]
+                    strategies.append({
+                        'name': strategy_name,
+                        'display_name': strategy_name.replace('_', ' ').title(),
+                        'type': 'custom'
+                    })
+        
+        return jsonify({'status': 'success', 'strategies': strategies})
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/strategy_editor/<strategy_name>')
+def strategy_editor(strategy_name):
+    """Simple strategy editor interface."""
+    try:
+        filepath = os.path.join(STRATEGIES_DIR, f"{strategy_name}.py")
+        
+        if os.path.exists(filepath):
+            with open(filepath, 'r') as f:
+                strategy_code = f.read()
+        else:
+            # Create template for new strategy
+            strategy_code = get_strategy_template(strategy_name)
+        
+        editor_html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Strategy Editor - {strategy_name}</title>
+            <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+            <style>
+                .code-editor {{
+                    font-family: 'Courier New', monospace;
+                    background-color: #2d3748;
+                    color: #e2e8f0;
+                    border: 1px solid #4a5568;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container mt-4">
+                <h3>Strategy Editor: {strategy_name}</h3>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <textarea id="codeEditor" class="form-control code-editor" rows="25">{strategy_code}</textarea>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-6">
+                        <button class="btn btn-success" onclick="saveStrategy()">Save Strategy</button>
+                        <button class="btn btn-secondary" onclick="validateStrategy()">Validate</button>
+                    </div>
+                    <div class="col-6 text-end">
+                        <button class="btn btn-danger" onclick="window.close()">Close</button>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-12">
+                        <div id="statusMessage" class="alert" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                function saveStrategy() {{
+                    const code = document.getElementById('codeEditor').value;
+                    
+                    fetch('/save_strategy', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            strategy_name: '{strategy_name}',
+                            code: code
+                        }})
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        showMessage(data.message, data.status === 'success' ? 'success' : 'danger');
+                    }});
+                }}
+                
+                function validateStrategy() {{
+                    const code = document.getElementById('codeEditor').value;
+                    
+                    fetch('/validate_strategy', {{
+                        method: 'POST',
+                        headers: {{
+                            'Content-Type': 'application/json',
+                        }},
+                        body: JSON.stringify({{
+                            code: code
+                        }})
+                    }})
+                    .then(response => response.json())
+                    .then(data => {{
+                        showMessage(data.message, data.status === 'success' ? 'success' : 'warning');
+                    }});
+                }}
+                
+                function showMessage(message, type) {{
+                    const messageDiv = document.getElementById('statusMessage');
+                    messageDiv.className = `alert alert-${{type}}`;
+                    messageDiv.textContent = message;
+                    messageDiv.style.display = 'block';
+                    setTimeout(() => {{
+                        messageDiv.style.display = 'none';
+                    }}, 5000);
+                }}
+            </script>
+        </body>
+        </html>
+        """
+        
+        return app.response_class(
+            response=editor_html,
+            status=200,
+            mimetype='text/html'
+        )
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
+
+@app.route('/save_strategy', methods=['POST'])
+def save_strategy():
+    """Save strategy code to file."""
+    try:
+        data = request.get_json()
+        strategy_name = data.get('strategy_name')
+        code = data.get('code')
+        
+        if not strategy_name or not code:
+            return jsonify({'status': 'error', 'message': 'Strategy name and code required'})
+        
+        filepath = os.path.join(STRATEGIES_DIR, f"{strategy_name}.py")
+        
+        with open(filepath, 'w') as f:
+            f.write(code)
+        
+        return jsonify({'status': 'success', 'message': 'Strategy saved successfully'})
+        
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': f'Save failed: {str(e)}'})
+
+def validate_strategy_file(filepath, strategy_name):
+    """Validate that a strategy file contains required functions."""
+    try:
+        spec = importlib.util.spec_from_file_location(strategy_name, filepath)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        
+        # Check for required function (strategy function that returns trades and signals)
+        strategy_functions = [name for name, obj in inspect.getmembers(module) 
+                            if inspect.isfunction(obj) and 'strategy' in name.lower()]
+        
+        if not strategy_functions:
+            return {'valid': False, 'error': 'No strategy function found. Strategy must contain a function with "strategy" in its name.'}
+        
+        return {'valid': True, 'functions': strategy_functions}
+        
+    except Exception as e:
+        return {'valid': False, 'error': f'Invalid Python file: {str(e)}'}
+
+def get_strategy_template(strategy_name):
+    """Get template code for new strategy."""
+    return f'''"""
+Custom Trading Strategy: {strategy_name}
+This is a template for creating your own trading strategy.
+"""
+
+import pandas as pd
+
+def {strategy_name}_strategy(df, **params):
+    """
+    Custom trading strategy function.
+    
+    Args:
+        df: DataFrame with OHLC data (columns: Open, High, Low, Close, datetime)
+        **params: Strategy parameters from the dashboard
+    
+    Returns:
+        dict with 'trades' and 'signals' lists
+    """
+    
+    # Example: Simple moving average strategy
+    fast_period = params.get('fast_period', 10)
+    slow_period = params.get('slow_period', 20)
+    
+    # Calculate moving averages
+    df['MA_Fast'] = df['Close'].rolling(window=fast_period).mean()
+    df['MA_Slow'] = df['Close'].rolling(window=slow_period).mean()
+    
+    signals = []
+    trades = []
+    position = None
+    
+    for i in range(1, len(df)):
+        current_row = df.iloc[i]
+        prev_row = df.iloc[i-1]
+        
+        # Buy signal: Fast MA crosses above Slow MA
+        if (prev_row['MA_Fast'] <= prev_row['MA_Slow'] and 
+            current_row['MA_Fast'] > current_row['MA_Slow'] and 
+            position is None):
+            
+            signal = {{
+                'datetime': current_row['datetime'],
+                'type': 'BUY',
+                'price': current_row['Close'],
+                'index': i
+            }}
+            signals.append(signal)
+            
+            position = {{
+                'type': 'BUY',
+                'entry_price': current_row['Close'],
+                'entry_time': current_row['datetime'],
+                'entry_index': i
+            }}
+        
+        # Sell signal: Fast MA crosses below Slow MA
+        elif (prev_row['MA_Fast'] >= prev_row['MA_Slow'] and 
+              current_row['MA_Fast'] < current_row['MA_Slow'] and 
+              position is not None):
+            
+            signal = {{
+                'datetime': current_row['datetime'],
+                'type': 'SELL',
+                'price': current_row['Close'],
+                'index': i
+            }}
+            signals.append(signal)
+            
+            if position:
+                # Calculate P&L
+                pnl = (current_row['Close'] - position['entry_price']) * 10000  # Convert to pips
+                
+                trade = {{
+                    'entry_time': position['entry_time'],
+                    'exit_time': current_row['datetime'],
+                    'entry_price': position['entry_price'],
+                    'exit_price': current_row['Close'],
+                    'type': position['type'],
+                    'pnl': pnl
+                }}
+                trades.append(trade)
+                position = None
+    
+    return {{
+        'trades': trades,
+        'signals': signals
+    }}
+
+# Strategy metadata (optional)
+STRATEGY_INFO = {{
+    'name': '{strategy_name}',
+    'description': 'Custom trading strategy',
+    'parameters': [
+        {{'name': 'fast_period', 'type': 'int', 'default': 10, 'min': 2, 'max': 50}},
+        {{'name': 'slow_period', 'type': 'int', 'default': 20, 'min': 5, 'max': 200}}
+    ]
+}}
+'''
 
 @app.route('/health')
 def health():
