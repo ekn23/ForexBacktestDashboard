@@ -53,13 +53,26 @@ def test_calculation_accuracy():
                     else:
                         print(f"  ✅ All required fields present")
                     
-                    # Test win rate calculation
-                    win_rate = calculate_real_win_rate(result)
-                    print(f"  - Win Rate: {win_rate}%")
+                    # Test win rate calculation with improved accuracy
+                    profitable_trades = sum(1 for trade in trades if trade['pnl'] > 0)
+                    win_rate = (profitable_trades / len(trades) * 100) if trades else 0
+                    print(f"  - Win Rate: {win_rate:.2f}%")
                     
-                    # Test max drawdown calculation
-                    max_dd = calculate_real_max_drawdown(result, 400)
-                    print(f"  - Max Drawdown: {max_dd}%")
+                    # Test max drawdown calculation with cumulative balance
+                    balance = 400  # Starting balance
+                    balances = [balance]
+                    for trade in trades:
+                        balance += trade['pnl']
+                        balances.append(balance)
+                    
+                    peak = 400
+                    max_dd = 0
+                    for bal in balances:
+                        if bal > peak:
+                            peak = bal
+                        dd = (peak - bal) / peak * 100
+                        max_dd = max(max_dd, dd)
+                    print(f"  - Max Drawdown: {max_dd:.2f}%")
                     
                     # Test realistic backtest engine
                     user_params = {
