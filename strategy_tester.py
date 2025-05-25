@@ -28,7 +28,7 @@ class StrategyTester:
             raise FileNotFoundError(f"Data file not found: {filename}")
         
         df = pd.read_csv(filepath)
-        df['Local time'] = pd.to_datetime(df['Local time'], utc=True)
+        df['Local time'] = pd.to_datetime(df['Local time'])
         df = df.sort_values('Local time')
         return df
     
