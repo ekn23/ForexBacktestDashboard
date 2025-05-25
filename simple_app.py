@@ -700,6 +700,32 @@ def calculate_real_win_rate(strategy_result):
     
     return round((winning_trades / len(trades)) * 100, 1)
 
+def calculate_real_max_drawdown(strategy_result, starting_capital):
+    """Calculate actual maximum drawdown from real trade results."""
+    trades = strategy_result.get('trades', [])
+    if not trades:
+        return 0.0
+    
+    # Track account balance through all trades
+    current_balance = starting_capital
+    peak_balance = starting_capital
+    max_drawdown = 0.0
+    
+    for trade in trades:
+        pnl = trade.get('pnl', 0)
+        current_balance += pnl
+        
+        # Update peak if we reached a new high
+        if current_balance > peak_balance:
+            peak_balance = current_balance
+        
+        # Calculate drawdown from peak
+        drawdown = ((peak_balance - current_balance) / peak_balance) * 100
+        if drawdown > max_drawdown:
+            max_drawdown = drawdown
+    
+    return round(max_drawdown, 1)
+
 def check_account_health(current_balance: float, starting_capital: float = 400):
     """Check account health with protective warnings."""
     balance_ratio = current_balance / starting_capital
@@ -1643,7 +1669,7 @@ def run_backtest():
             'total_pnl': total_pnl,
             'signals_count': signals_count,
             'win_rate': calculate_real_win_rate(strategy_result) if signals_count > 0 else 0,
-            'max_drawdown': 5.2 if signals_count > 0 else 0,
+            'max_drawdown': calculate_real_max_drawdown(strategy_result, starting_capital) if signals_count > 0 else 0,
             'data_points': len(df),
             'date_range': f"{df['datetime'].min()} to {df['datetime'].max()}" if len(df) > 0 else "No data",
             'risk_management': {
