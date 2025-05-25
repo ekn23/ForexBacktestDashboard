@@ -624,10 +624,11 @@ def run_realistic_backtest_engine(strategy_result, starting_capital, user_params
         if position_count >= 1:  # One trade at a time rule
             continue
             
-        lot_size = trade.get('lot_size', 0.05)  # Start at 0.05 lots
+        # Use YOUR actual lot size setting from UI
+        lot_size = user_params.get('lot_size', 0.05) if user_params else 0.05
         entry_price = trade['entry_price']
         exit_price = trade['exit_price']
-        direction = trade.get('type', 'BUY')  # Use 'type' field or default to 'BUY'
+        direction = trade.get('type', 'BUY')
         
         # Calculate raw pip profit/loss
         if direction == 'BUY':
@@ -635,10 +636,12 @@ def run_realistic_backtest_engine(strategy_result, starting_capital, user_params
         else:
             pip_profit = (entry_price - exit_price) * 10000
         
-        # Apply realistic trading costs
-        total_costs = (spread_cost_per_lot + slippage_per_lot) * lot_size
+        # Apply YOUR actual spread and slippage settings from UI
+        spread_cost = user_params.get('spread_pips', 2.0) if user_params else 2.0
+        slippage_cost = user_params.get('slippage_pips', 1.5) if user_params else 1.5
+        total_costs = (spread_cost + slippage_cost) * lot_size
         
-        # Net profit after costs (OANDA-style calculation)
+        # Net profit after costs using YOUR actual lot size from UI
         net_pip_profit = pip_profit - total_costs
         trade_pnl = net_pip_profit * lot_size * 10  # $10 per pip per lot
         
@@ -730,6 +733,111 @@ def calculate_real_max_drawdown(strategy_result, starting_capital):
             max_drawdown = drawdown
     
     return round(max_drawdown, 1)
+
+def apply_user_stop_loss_take_profit(strategy_result, df, sl_tp_params):
+    """Apply YOUR actual Stop Loss & Take Profit settings from UI to all trades"""
+    trades = strategy_result.get('trades', [])
+    signals = strategy_result.get('signals', [])
+    
+    if not trades:
+        return strategy_result
+    
+    # Calculate ATR for dynamic stop losses
+    df = df.copy()
+    df['ATR'] = calculate_atr(df, period=14)
+    
+    updated_trades = []
+    
+    for trade in trades:
+        entry_price = trade['entry_price']
+        direction = trade.get('type', 'BUY')
+        entry_time = trade.get('entry_time')
+        
+        # Find the entry point in dataframe
+        entry_idx = None
+        for i, row in df.iterrows():
+            if pd.to_datetime(row['datetime']) >= pd.to_datetime(entry_time):
+                entry_idx = i
+                break
+        
+        if entry_idx is None:
+            updated_trades.append(trade)
+            continue
+            
+        atr_value = df.iloc[entry_idx]['ATR'] if entry_idx < len(df) else 0.0002
+        
+        # Calculate YOUR Stop Loss from UI settings
+        stop_loss = calculate_stop_loss(
+            entry_price, 
+            sl_tp_params.get('stop_loss_type', 'atr'),
+            sl_tp_params.get('stop_loss_value', 2.0),
+            atr_value,
+            direction
+        )
+        
+        # Calculate YOUR Take Profit from UI settings  
+        take_profit = calculate_take_profit(
+            entry_price,
+            sl_tp_params.get('take_profit_type', 'ratio'),
+            sl_tp_params.get('take_profit_value', 1.5),
+            stop_loss,
+            direction
+        )
+        
+        # Find actual exit based on YOUR SL/TP settings
+        exit_price = trade['exit_price']
+        exit_time = trade.get('exit_time')
+        
+        # Check if SL or TP was hit first by scanning price action
+        for i in range(entry_idx + 1, len(df)):
+            row = df.iloc[i]
+            current_high = row['High']
+            current_low = row['Low']
+            
+            if direction == 'BUY':
+                # Check Stop Loss hit
+                if current_low <= stop_loss:
+                    exit_price = stop_loss
+                    exit_time = row['datetime']
+                    break
+                # Check Take Profit hit
+                elif current_high >= take_profit:
+                    exit_price = take_profit
+                    exit_time = row['datetime']
+                    break
+            else:  # SELL
+                # Check Stop Loss hit
+                if current_high >= stop_loss:
+                    exit_price = stop_loss
+                    exit_time = row['datetime']
+                    break
+                # Check Take Profit hit
+                elif current_low <= take_profit:
+                    exit_price = take_profit
+                    exit_time = row['datetime']
+                    break
+        
+        # Calculate correct P&L with YOUR settings
+        if direction == 'BUY':
+            pip_profit = (exit_price - entry_price) * 10000
+        else:
+            pip_profit = (entry_price - exit_price) * 10000
+            
+        updated_trade = trade.copy()
+        updated_trade.update({
+            'exit_price': exit_price,
+            'exit_time': exit_time,
+            'stop_loss': stop_loss,
+            'take_profit': take_profit,
+            'pnl': pip_profit,
+            'direction': direction
+        })
+        updated_trades.append(updated_trade)
+    
+    return {
+        'trades': updated_trades,
+        'signals': signals
+    }
 
 def check_account_health(current_balance: float, starting_capital: float = 400):
     """Check account health with protective warnings."""
@@ -1638,6 +1746,17 @@ def run_backtest():
         
         # Run selected strategy with user parameters
         strategy_result = run_selected_strategy(df, strategy_params)
+        
+        # Apply YOUR Stop Loss & Take Profit settings to all trades
+        if strategy_result.get('trades'):
+            strategy_result = apply_user_stop_loss_take_profit(strategy_result, df, {
+                'stop_loss_type': request.json.get('stop_loss_type', 'atr'),
+                'stop_loss_value': request.json.get('stop_loss_value', 2.0),
+                'take_profit_type': request.json.get('take_profit_type', 'ratio'),
+                'take_profit_value': request.json.get('take_profit_value', 1.5),
+                'trailing_stop': request.json.get('trailing_stop', 'none'),
+                'trailing_distance': request.json.get('trailing_distance', 15)
+            })
         
         # Calculate professional metrics with risk management
         signals_count = len(strategy_result['signals'])
