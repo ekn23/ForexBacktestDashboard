@@ -201,17 +201,21 @@ def index():
                             <div class="row">
                                 <div class="col-md-3">
                                     <label class="form-label">Currency Pair</label>
-                                    <select class="form-select">
-                                        <option>EURUSD</option>
-                                        <option>GBPUSD</option>
-                                        <option>USDJPY</option>
+                                    <select class="form-select" id="currencyPair">
+                                        <option value="EURUSD">EURUSD</option>
+                                        <option value="GBPUSD">GBPUSD</option>
+                                        <option value="AUDUSD">AUDUSD</option>
+                                        <option value="NZDUSD">NZDUSD</option>
+                                        <option value="USDCAD">USDCAD</option>
+                                        <option value="USDCHF">USDCHF</option>
+                                        <option value="USDJPY">USDJPY</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label">Timeframe</label>
-                                    <select class="form-select">
-                                        <option>30_M</option>
-                                        <option>5_M</option>
+                                    <select class="form-select" id="timeframe">
+                                        <option value="30_M">30_M</option>
+                                        <option value="5_M">5_M</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -284,9 +288,9 @@ def index():
 
             // Backtest function with real forex data
             function runBacktest() {
-                const currencyPair = document.querySelector('select').value;
-                const timeframe = document.querySelectorAll('select')[1].value;
-                const strategy = document.querySelectorAll('select')[2].value;
+                const currencyPair = document.getElementById('currencyPair').value;
+                const timeframe = document.getElementById('timeframe').value;
+                const strategy = 'MA Crossover'; // Fixed strategy for now
                 const startDate = document.getElementById('startDate').value;
                 const endDate = document.getElementById('endDate').value;
                 
