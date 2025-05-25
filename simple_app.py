@@ -280,7 +280,7 @@ def rsi_strategy(df: pd.DataFrame, period=14, oversold=30, overbought=70):
                     'entry_price': position['entry_price'],
                     'exit_price': current_row['Close'],
                     'type': position['type'],
-                    'pnl': ('current_row['Close'] - position['entry_price']) * 10000'
+                    'pnl': (current_row['Close'] - position['entry_price']) * 10000
                 }
                 trades.append(trade)
                 position = None
@@ -494,7 +494,7 @@ def stochastic_strategy(df: pd.DataFrame, k_period=14, d_period=3, oversold=20, 
                     'entry_price': position['entry_price'],
                     'exit_price': current_row['Close'],
                     'type': position['type'],
-                    'pnl': ('current_row['Close'] - position['entry_price']) * 10000'
+                    'pnl': (current_row['Close'] - position['entry_price']) * 10000
                 }
                 trades.append(trade)
                 position = None
